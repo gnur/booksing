@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export BOOK_DIR=/home/erwin/Downloads/drive-download-20171002T115616Z-001
+export BOOK_DIR=./bookdump/
+#export ALLOW_DELETES=true
 
 ./build.sh
 
 echo "running now"
-export ALLOW_DELETES=true
 ./booksing

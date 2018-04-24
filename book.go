@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
 
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/globalsign/mgo/bson"
 	"github.com/kennygrant/sanitize"
 	"golang.org/x/tools/godoc/vfs/zipfs"
 )
@@ -48,14 +48,16 @@ func fix(s string, capitalize, correctOrder bool) string {
 
 // Book represents a book
 type Book struct {
-	ID          string `json:"id" storm:"id"`
-	Title       string `json:"title" storm:"index"`
-	Author      string `json:"author" storm:"index"`
-	Description string `json:"description,omitempty"`
-	Filepath    string `json:"filepath" storm:"index"`
-	Filename    string `json:"filename" storm:"index"`
-	HasMobi     bool   `json:"hasmobi"`
-	LastSeen    int64  `storm:"index"`
+	ID            bson.ObjectId `json:"id"`
+	Hash          string
+	Title         string   `json:"title"`
+	Author        string   `json:"author"`
+	Description   string   `json:"description`
+	Filepath      string   `json:"filepath"`
+	Filename      string   `json:"filename"`
+	HasMobi       bool     `json:"hasmobi"`
+	MetaphoneKeys []string `bson:"metaphone_keys"`
+	SearchWords   []string `bson:"search_keys"`
 }
 
 // NewBookFromFile creates a book object from a file
@@ -68,7 +70,6 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	}()
 
 	book := new(Book)
-	book.LastSeen = time.Now().UnixNano()
 	book.Title = filepath.Base(path)
 	book.Filename = filepath.Base(path)
 	book.Filepath = path
@@ -131,10 +132,14 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	book.Description = fix(book.Description, false, false)
 	book.Description = sanitize.HTML(book.Description)
 
+	searchWords := book.Title + " " + book.Author
+	book.MetaphoneKeys = getMetaphoneKeys(searchWords)
+	book.SearchWords = getLowercasedSlice(searchWords)
+
 	id := sha1.New()
 	io.WriteString(id, book.Author)
 	io.WriteString(id, book.Title)
-	book.ID = hex.EncodeToString(id.Sum(nil))[:10]
+	book.Hash = hex.EncodeToString(id.Sum(nil))[:10]
 
 	return book, nil
 }

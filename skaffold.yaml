@@ -1,0 +1,11 @@
+apiVersion: skaffold/v1alpha2
+kind: Config
+build:
+  artifacts:
+  - imageName: booksing
+    workspace: .
+deploy:
+  kubectl:
+    manifests:
+      - k8s-booksing.yaml
+projectId: booksing

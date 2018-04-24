@@ -2,8 +2,22 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/antzucaro/matchr"
+  packages = ["."]
+  revision = "63146c76a4e12211c0d269f5fb74dab2c24e3067"
+
+[[projects]]
   name = "github.com/asdine/storm"
-  packages = [".","codec","codec/json","codec/msgpack","index","internal","q"]
+  packages = [
+    ".",
+    "codec",
+    "codec/json",
+    "codec/msgpack",
+    "index",
+    "internal",
+    "q"
+  ]
   revision = "dbd37722730b6cb703b5bd825c3f142d87358525"
   version = "v2.0.0"
 
@@ -24,6 +38,15 @@
   name = "github.com/elazarl/go-bindata-assetfs"
   packages = ["."]
   revision = "30f82fa23fd844bd5bb1e5f216db87fd77b5eb43"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    "bson",
+    "internal/json"
+  ]
+  revision = "f76e4f9da92ecd56e3be26f5ba92580af1ef97b4"
 
 [[projects]]
   branch = "master"
@@ -52,19 +75,29 @@
 [[projects]]
   branch = "master"
   name = "github.com/mattn/go-zglob"
-  packages = [".","fastwalk"]
+  packages = [
+    ".",
+    "fastwalk"
+  ]
   revision = "cb5263554791976bf8cdd747c82355370893ecd7"
 
 [[projects]]
   name = "github.com/vmihailenco/msgpack"
-  packages = [".","codes"]
+  packages = [
+    ".",
+    "codes"
+  ]
   revision = "40b1cac89761d843bbb96b8b27c746ba5937322a"
   version = "v3.2.3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","html","html/atom"]
+  packages = [
+    "context",
+    "html",
+    "html/atom"
+  ]
   revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
 
 [[projects]]
@@ -76,18 +109,31 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/tools"
-  packages = ["godoc/vfs","godoc/vfs/zipfs"]
+  packages = [
+    "godoc/vfs",
+    "godoc/vfs/zipfs"
+  ]
   revision = "f271d7a0f8cf389f3ee4f6bf8d68e716a60ea571"
 
 [[projects]]
   name = "google.golang.org/appengine"
-  packages = [".","datastore","internal","internal/app_identity","internal/base","internal/datastore","internal/log","internal/modules","internal/remote_api"]
+  packages = [
+    ".",
+    "datastore",
+    "internal",
+    "internal/app_identity",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/modules",
+    "internal/remote_api"
+  ]
   revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
   version = "v1.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ab51a91219df8dacf618cdf4c3934d7b4a000da4350f3544b1ff0f9cc31f0b4f"
+  inputs-digest = "919c46bf5a7bae4766233e2e0d49ce263b65bd358fc09a76549dbf5ff7df7860"
   solver-name = "gps-cdcl"
   solver-version = 1

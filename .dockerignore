@@ -1,0 +1,11 @@
+.vscode
+.git
+*.db
+dist
+bindata_assetfs.go
+k8s-*
+build.sh
+run.sh
+skaffold.yaml
+k8s-memgo.yaml
+bookdump

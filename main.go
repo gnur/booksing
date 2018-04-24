@@ -15,13 +15,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asdine/storm"
-	"github.com/asdine/storm/codec/msgpack"
-	"github.com/asdine/storm/q"
+	"github.com/globalsign/mgo/bson"
+
+	"github.com/globalsign/mgo"
 	"github.com/google/uuid"
 	"github.com/jordan-wright/email"
 	zglob "github.com/mattn/go-zglob"
 )
+
+type booksingApp struct {
+	books *mgo.Collection
+	users *mgo.Collection
+}
 
 type bookResponse struct {
 	Books      []Book `json:"books"`
@@ -40,7 +45,7 @@ type bookConvertRequest struct {
 
 // User represents a user..
 type User struct {
-	Name  string `storm:"id"`
+	Name  string
 	Token string
 }
 
@@ -51,17 +56,26 @@ func main() {
 	if bookDir == "" {
 		bookDir = "."
 	}
-
-	dbLocation := os.Getenv("DATABASE_LOCATION")
-	if dbLocation == "" {
-		dbLocation = filepath.Join(bookDir, "booksing.db")
+	mongoHost := os.Getenv("MONGO_HOST")
+	if mongoHost == "" {
+		mongoHost = "localhost"
 	}
-	db, err := storm.Open(dbLocation, storm.Codec(msgpack.Codec), storm.Batch())
+	fmt.Println("Connecting to", mongoHost)
+	conn, err := mgo.Dial(mongoHost)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	defer db.Close()
+	fmt.Println("Connected")
+	session := conn.DB("booksing")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	app := booksingApp{
+		books: session.C("books"),
+		users: session.C("users"),
+	}
 
 	http.HandleFunc("/convert", func(w http.ResponseWriter, r *http.Request) {
 		var convert bookConvertRequest
@@ -75,29 +89,30 @@ func main() {
 			return
 		}
 		var convertBook Book
-		err = db.One("ID", convert.BookID, &convertBook)
+		//err = db.One("ID", convert.BookID, &convertBook)
+		err = app.books.Find(bson.M{"id": convert.BookID}).One(&convertBook)
 		if err == nil {
 			go convertAndSendBook(&convertBook, convert)
 		} else {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 		}
-		fmt.Println(convert.BookID)
+		log.Println(convert.BookID)
 	})
-	http.HandleFunc("/refresh", refreshBooks(db, bookDir, allowDeletes))
-	http.HandleFunc("/books.json", getBooks(db))
-	http.HandleFunc("/adduser", addUser(db))
-	http.HandleFunc("/download/", getBook(db))
+	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
+	http.HandleFunc("/books.json", app.getBooks())
+	http.HandleFunc("/adduser", app.addUser())
+	http.HandleFunc("/download/", app.getBook())
 
 	http.Handle("/", http.FileServer(assetFS()))
-	fmt.Println("Please visit http://localhost:7132 to view booksing")
+	log.Println("Please visit http://localhost:7132 to view booksing")
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
 
 func convertAndSendBook(c *Book, req bookConvertRequest) {
 	var attachment string
-	fmt.Println("-----------------------------------")
+	log.Println("-----------------------------------")
 	if !c.HasMobi && req.ConvertToMobi {
-		fmt.Println("first convert the book")
+		log.Println("first convert the book")
 		cmd := exec.Command("kindlegen", c.Filepath)
 		log.Printf("Running command and waiting for it to finish...")
 		err := cmd.Run()
@@ -121,7 +136,7 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 	} else if !req.ConvertToMobi {
 		attachment = c.Filepath
 	} else {
-		fmt.Println("mobi not present but was requested")
+		log.Println("mobi not present but was requested")
 		return
 	}
 	e := email.NewEmail()
@@ -132,16 +147,16 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 	e.AttachFile(attachment)
 	err := e.Send(req.SMTPServer+":587", smtp.PlainAuth("", req.SMTPUser, req.SMTPPassword, req.SMTPServer))
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 	}
 
-	fmt.Println(c)
-	fmt.Println("-----------------------------------")
+	log.Println(c)
+	log.Println("-----------------------------------")
 }
-func getBook(db *storm.DB) http.HandlerFunc {
+func (app booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
-		if err != nil || !validToken(db, c.Value) {
+		if err != nil || !app.validToken(c.Value) {
 			http.Error(w, "denied", http.StatusForbidden)
 			return
 		}
@@ -149,7 +164,7 @@ func getBook(db *storm.DB) http.HandlerFunc {
 		fmt.Println(c.Value)
 		fmt.Println("trying to download ", fileName)
 		var book Book
-		err = db.One("Filename", fileName, &book)
+		err = app.books.Find(bson.M{"filename": fileName}).One(&book)
 		if err != nil {
 			return
 		}
@@ -158,7 +173,7 @@ func getBook(db *storm.DB) http.HandlerFunc {
 	}
 }
 
-func validToken(db *storm.DB, cookie string) bool {
+func (app booksingApp) validToken(cookie string) bool {
 	if os.Getenv("TOKEN_REQUIRED") != "true" {
 		return true
 	}
@@ -167,14 +182,14 @@ func validToken(db *storm.DB, cookie string) bool {
 		return false
 	}
 	var user User
-	err := db.One("Name", parts[0], &user)
+	err := app.users.Find(bson.M{"name": parts[0]}).One(&user)
 	if err != nil {
 		return false
 	}
 	return parts[1] == user.Token
 }
 
-func addUser(db *storm.DB) http.HandlerFunc {
+func (app booksingApp) addUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		addr := strings.Split(r.RemoteAddr, ":")[0]
 		if addr != "127.0.0.1" {
@@ -190,7 +205,7 @@ func addUser(db *storm.DB) http.HandlerFunc {
 		var user User
 		user.Name = username
 		user.Token = token
-		err := db.Save(&user)
+		err := app.users.Insert(&user)
 		if err != nil {
 			http.Error(w, "unknown error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -199,16 +214,14 @@ func addUser(db *storm.DB) http.HandlerFunc {
 	}
 }
 
-func getBooks(db *storm.DB) http.HandlerFunc {
+func (app booksingApp) getBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
-		if err != nil || !validToken(db, c.Value) {
+		if err != nil || !app.validToken(c.Value) {
 			http.Error(w, "denied", http.StatusForbidden)
 			return
 		}
 		var resp bookResponse
-		var book Book
-		var books []Book
 		var limit int
 		numString := r.URL.Query().Get("results")
 		filter := strings.ToLower(r.URL.Query().Get("filter"))
@@ -218,26 +231,13 @@ func getBooks(db *storm.DB) http.HandlerFunc {
 				limit = a
 			}
 		}
-		numResults, err := db.Count(&book)
+		numResults, err := app.books.Count()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		resp.TotalCount = numResults
 
-		if filter == "" {
-			err := db.All(&books, storm.Limit(limit))
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-		} else {
-			filter = "(?i)" + filter
-			query := db.Select(q.Or(
-				q.Re("Author", filter),
-				q.Re("Title", filter),
-			)).Limit(limit).OrderBy("Author")
-			query.Find(&books)
-		}
-		resp.Books = books
+		resp.Books = app.filterBooks(filter, limit)
 		if len(resp.Books) == 0 {
 			resp.Books = []Book{}
 		}
@@ -246,21 +246,38 @@ func getBooks(db *storm.DB) http.HandlerFunc {
 	}
 }
 
-func refreshBooks(db *storm.DB, bookDir string, allowDeletes bool) http.HandlerFunc {
+func (app booksingApp) filterBooks(filter string, limit int) []Book {
+	var books []Book
+	var iter *mgo.Iter
+	if filter == "" {
+		iter = app.books.Find(nil).Limit(limit).Iter()
+	} else {
+		iter = app.books.Find(bson.M{"author": bson.RegEx{Pattern: filter}}).Limit(limit).Iter()
+		//TODO: add title
+	}
+	err := iter.All(&books)
+	if err != nil {
+		log.Println(err.Error())
+		return []Book{}
+	}
+	return books
+}
+
+func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("starting refresh of booklist")
-		db.Set("status", "current", "indexing books")
 		matches, err := zglob.Glob(filepath.Join(bookDir, "/**/*.epub"))
 		if err != nil {
 			fmt.Println("Scan could not complete: ", err.Error())
 			return
 		}
+		log.Println("found", len(matches), "epubs in ", bookDir)
 
 		bookQ := make(chan string, len(matches))
 		resultQ := make(chan int)
 
-		for w := 0; w < 5; w++ {
-			go bookParser(db, bookQ, resultQ, allowDeletes)
+		for w := 0; w < 1; w++ { //not sure yet how concurrent-proof my solution is
+			go app.bookParser(bookQ, resultQ, allowDeletes)
 		}
 
 		for _, filename := range matches {
@@ -274,15 +291,16 @@ func refreshBooks(db *storm.DB, bookDir string, allowDeletes bool) http.HandlerF
 			}
 		}
 
-		db.Set("status", "current", "idle")
 		log.Println("started refresh of booklist")
 	}
 }
 
-func bookParser(db *storm.DB, bookQ chan string, resultQ chan int, allowDeletes bool) {
+func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDeletes bool) {
 	for filename := range bookQ {
+		log.Println("parsing", filename)
 		var dbBook Book
-		err := db.One("Filepath", filename, &dbBook)
+		//err := db.One("Filepath", filename, &dbBook)
+		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
 		if err == nil {
 			resultQ <- 1
 			continue
@@ -296,9 +314,12 @@ func bookParser(db *storm.DB, bookQ chan string, resultQ chan int, allowDeletes 
 			resultQ <- 1
 			continue
 		}
-		err = db.One("ID", book.ID, &dbBook)
-		if err == storm.ErrNotFound {
-			err = db.Save(book)
+		//err = db.One("ID", book.ID, &dbBook)
+		err = app.books.Find(bson.M{"hash": book.Hash}).One(&dbBook)
+		if err != nil {
+			//TODO: find out what happens if One() fails
+			book.ID = bson.NewObjectId()
+			err = app.books.Insert(book)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -306,6 +327,9 @@ func bookParser(db *storm.DB, bookQ chan string, resultQ chan int, allowDeletes 
 			fmt.Println("Deleting ", filename)
 			os.Remove(filename)
 		}
+		//for _, tag := range book.MatchKey {
+		//	addBookToTag(db, tag, book.ID)
+		//}
 		resultQ <- 1
 	}
 }

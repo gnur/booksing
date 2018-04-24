@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: booksing
+  labels:
+    app: booksing
+spec:
+  containers:
+  - name: booksing
+    image: booksing
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 7132
+      initialDelaySeconds: 2
+      periodSeconds: 1
+    lifecycle:
+      postStart:
+        httpGet:
+          path: /refresh
+          port: 7132
+    ports:
+    - containerPort: 7132
+      name: booksing
+    env:
+    - name: MONGO_HOST
+      value: mongodb
+    - name: BOOK_DIR
+      value: /books
+    - name: DATABASE_LOCATION
+      value: /tmp/booksing.db
+...
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: booksing
+spec:
+  selector:
+    app: booksing
+  ports:
+  - protocol: TCP
+    port: 7132
+    targetPort: booksing
+    name: booksing
+  type: LoadBalancer
