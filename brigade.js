@@ -3,10 +3,8 @@ const { events, Job } = require("brigadier");
 events.on("push", function(e, project) {
   console.log("received push for commit " + e.commit)
 
-  // Create a new job
   var node = new Job("test-runner")
 
-  // We want our job to run the stock Docker Python 3 image
   node.image = "golang:1.9.4-alpine3.7"
 
   node.tasks = [
