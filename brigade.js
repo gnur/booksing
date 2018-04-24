@@ -10,6 +10,7 @@ events.on("push", function(e, project) {
   node.image = "golang:1.9.4-alpine3.7"
 
   node.tasks = [
+    "apk add --no-cache git",
     "mkdir -p /go/src/github.com/gnur/",
     "cp -a /src/ /go/src/github.com/gnur/booksing/",
     "cd /go/src/github.com/gnur/booksing/",
