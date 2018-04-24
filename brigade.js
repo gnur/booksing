@@ -17,7 +17,7 @@ events.on("push", function(e, project) {
     "go get github.com/jteeuwen/go-bindata/...",
     "go get github.com/elazarl/go-bindata-assetfs/...",
     "go-bindata-assetfs static/...",
-    "RUN go build -o app *.go"
+    "go build -o app *.go"
   ]
 
   // We're done configuring, so we run the job
