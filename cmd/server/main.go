@@ -1,10 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 
+	"github.com/gnur/booksing/firestore"
+	_ "github.com/gnur/booksing/firestore"
+	"github.com/gnur/booksing/mongodb"
+	_ "github.com/gnur/booksing/mongodb"
+	"github.com/gnur/booksing/storm"
+	_ "github.com/gnur/booksing/storm"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
@@ -37,20 +45,20 @@ func main() {
 	var db database
 	if strings.HasPrefix(cfg.Database, "mongo://") {
 		log.WithField("mongohost", cfg.Database).Debug("connectiong to mongodb")
-		db, err = newMongoDB(cfg.Database)
+		db, err = mongodb.New(cfg.Database)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create mongodb connection")
 		}
 	} else if strings.HasPrefix(cfg.Database, "firestore://") {
 		log.WithField("project", cfg.Database).Debug("using firestore")
 		project := strings.TrimPrefix(cfg.Database, "firestore://")
-		db, err = newFireStore(project)
+		db, err = firestore.New(project)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create firestore client")
 		}
 	} else if strings.HasPrefix(cfg.Database, "file://") {
 		log.WithField("filedbpath", cfg.Database).Debug("using this file")
-		db, err = newStormDB(cfg.Database)
+		db, err = storm.New(cfg.Database)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create fileDB")
 		}
@@ -81,5 +89,13 @@ func main() {
 	http.Handle("/", http.FileServer(assetFS()))
 
 	log.Info("booksing is now running")
-	log.Fatal(http.ListenAndServe(cfg.BindAddress, nil))
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = cfg.BindAddress
+	} else {
+		port = fmt.Sprintf(":%s", port)
+	}
+
+	log.Fatal(http.ListenAndServe(port, nil))
 }

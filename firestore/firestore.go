@@ -1,68 +1,72 @@
-package main
+package firestore
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	
 	"cloud.google.com/go/firestore"
+	"github.com/gnur/booksing"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
 
-type fireDB struct {
+// FireDB holds the firestore client
+type FireDB struct {
 	client *firestore.Client
 }
 
-func newFireStore(projectID string) (*fireDB, error) {
+// NewFireStore returns a new firestore client
+func New(projectID string) (*FireDB, error) {
 	ctx := context.Background()
 	client, err := firestore.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
-	db := fireDB{
+	db := FireDB{
 		client: client,
 	}
 	return &db, nil
 }
-func (db *fireDB) Close() {
+func (db *FireDB) Close() {
 	db.client.Close()
 }
 
-func (db *fireDB) AddBook(b *Book) error {
+func (db *FireDB) AddBook(b *booksing.Book) error {
 	ctx := context.Background()
 
 	_, err := db.GetBookBy("Hash", b.Hash)
 	if err == nil {
-		return ErrDuplicate
+		return booksing.ErrDuplicate
 	}
 	_, err = db.client.Collection("books").Doc(b.Hash).Set(ctx, b)
 
 	return err
 }
 
-func (db *fireDB) GetBook(q string) (*Book, error) {
+func (db *FireDB) GetBook(q string) (*booksing.Book, error) {
 	results, err := db.filterBooksBQL(q, 10)
 	if err != nil {
 		return nil, err
 	}
 	if len(results) > 1 {
-		return nil, ErrNonUniqueResult
+		return nil, booksing.ErrNonUniqueResult
 	}
 	if len(results) == 0 {
-		return nil, ErrNotFound
+		return nil, booksing.ErrNotFound
 	}
 	return &results[0], nil
 }
 
-func (db *fireDB) GetBookBy(field, value string) (*Book, error) {
+func (db *FireDB) GetBookBy(field, value string) (*booksing.Book, error) {
 	ctx := context.Background()
 	iter := db.client.Collection("books").Where(field, "==", value).Limit(5).Documents(ctx)
 
-	var books []Book
-	var b Book
+	var books []booksing.Book
+	var b booksing.Book
 	for {
-		b = Book{}
+		b = booksing.Book{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -77,22 +81,22 @@ func (db *fireDB) GetBookBy(field, value string) (*Book, error) {
 	}
 
 	if len(books) > 1 {
-		return nil, ErrNonUniqueResult
+		return nil, booksing.ErrNonUniqueResult
 	}
 	if len(books) == 0 {
-		return nil, ErrNotFound
+		return nil, booksing.ErrNotFound
 	}
 
 	return &books[0], nil
 }
 
-func (db *fireDB) DeleteBook(hash string) error {
+func (db *FireDB) DeleteBook(hash string) error {
 	ctx := context.Background()
 	_, err := db.client.Collection("books").Doc(hash).Delete(ctx)
 	return err
 }
 
-func (db *fireDB) SetBookConverted(hash string) error {
+func (db *FireDB) SetBookConverted(hash string) error {
 	ctx := context.Background()
 	book, _ := db.GetBookBy("Hash", hash)
 	book.HasMobi = true
@@ -102,7 +106,7 @@ func (db *fireDB) SetBookConverted(hash string) error {
 	return err
 }
 
-func (db *fireDB) GetBooks(q string, limit int) ([]Book, error) {
+func (db *FireDB) GetBooks(q string, limit int) ([]booksing.Book, error) {
 	if q == "" {
 		return db.getRecentBooks(limit)
 	}
@@ -113,7 +117,7 @@ func (db *fireDB) GetBooks(q string, limit int) ([]Book, error) {
 	books, err := db.searchExact(q, limit)
 	if err != nil {
 		log.WithField("err", err).Error("filtering books failed")
-		return []Book{}, err
+		return []booksing.Book{}, err
 	}
 	if len(books) > 0 {
 		return books, nil
@@ -122,18 +126,18 @@ func (db *fireDB) GetBooks(q string, limit int) ([]Book, error) {
 	books, err = db.searchMetaphoneKeys(q, limit)
 	if err != nil {
 		log.WithField("err", err).Error("filtering books failed")
-		return []Book{}, err
+		return []booksing.Book{}, err
 	}
 	return books, nil
 }
 
-func (db *fireDB) searchMetaphoneKeys(q string, limit int) ([]Book, error) {
+func (db *FireDB) searchMetaphoneKeys(q string, limit int) ([]booksing.Book, error) {
 	ctx := context.Background()
 
 	longestTermLength := 0
 	longestTerm := ""
 
-	terms := getMetaphoneKeys(q)
+	terms := booksing.GetMetaphoneKeys(q)
 
 	for _, term := range terms {
 		if len(term) > longestTermLength {
@@ -149,7 +153,7 @@ func (db *fireDB) searchMetaphoneKeys(q string, limit int) ([]Book, error) {
 		return nil, err
 	}
 
-	var retBooks []Book
+	var retBooks []booksing.Book
 	for _, book := range books {
 		if book.HasMetaphoneKeys(terms) {
 			retBooks = append(retBooks, book)
@@ -158,7 +162,7 @@ func (db *fireDB) searchMetaphoneKeys(q string, limit int) ([]Book, error) {
 	return retBooks, nil
 }
 
-func (db *fireDB) searchExact(q string, limit int) ([]Book, error) {
+func (db *FireDB) searchExact(q string, limit int) ([]booksing.Book, error) {
 	ctx := context.Background()
 
 	longestTermLength := 0
@@ -180,7 +184,7 @@ func (db *fireDB) searchExact(q string, limit int) ([]Book, error) {
 		return nil, err
 	}
 
-	var retBooks []Book
+	var retBooks []booksing.Book
 	for _, book := range books {
 		if book.HasSearchWords(terms) {
 			retBooks = append(retBooks, book)
@@ -189,15 +193,15 @@ func (db *fireDB) searchExact(q string, limit int) ([]Book, error) {
 	return retBooks, nil
 }
 
-func (db *fireDB) filterBooksBQL(q string, limit int) ([]Book, error) {
+func (db *FireDB) filterBooksBQL(q string, limit int) ([]booksing.Book, error) {
 	query := db.parseQuery(q)
-	var books []Book
-	var b Book
+	var books []booksing.Book
+	var b booksing.Book
 
 	ctx := context.Background()
 	iter := query.OrderBy("Hash", firestore.Desc).Limit(limit).Documents(ctx)
 	for {
-		b = Book{}
+		b = booksing.Book{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -214,13 +218,13 @@ func (db *fireDB) filterBooksBQL(q string, limit int) ([]Book, error) {
 	return books, nil
 }
 
-func (db *fireDB) getRecentBooks(limit int) ([]Book, error) {
-	var books []Book
+func (db *FireDB) getRecentBooks(limit int) ([]booksing.Book, error) {
+	var books []booksing.Book
 	ctx := context.Background()
-	var b Book
+	var b booksing.Book
 	iter := db.client.Collection("books").OrderBy("Added", firestore.Desc).Limit(limit).Documents(ctx)
 	for {
-		b = Book{}
+		b = booksing.Book{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -236,18 +240,18 @@ func (db *fireDB) getRecentBooks(limit int) ([]Book, error) {
 	return books, nil
 }
 
-func (db *fireDB) AddDownload(dl download) error {
+func (db *FireDB) AddDownload(dl booksing.Download) error {
 	ctx := context.Background()
 	_, _, err := db.client.Collection("downloads").Add(ctx, dl)
 	return err
 }
-func (db *fireDB) GetDownloads(limit int) ([]download, error) {
-	var dls []download
+func (db *FireDB) GetDownloads(limit int) ([]booksing.Download, error) {
+	var dls []booksing.Download
 	ctx := context.Background()
-	var d download
+	var d booksing.Download
 	iter := db.client.Collection("downloads").OrderBy("Timestamp", firestore.Desc).Limit(limit).Documents(ctx)
 	for {
-		d = download{}
+		d = booksing.Download{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -262,22 +266,22 @@ func (db *fireDB) GetDownloads(limit int) ([]download, error) {
 	}
 	return dls, nil
 }
-func (db *fireDB) BookCount() int {
+func (db *FireDB) BookCount() int {
 	return 0
 }
 
-func (db *fireDB) AddRefresh(rr RefreshResult) error {
+func (db *FireDB) AddRefresh(rr booksing.RefreshResult) error {
 	ctx := context.Background()
 	_, _, err := db.client.Collection("refreshes").Add(ctx, rr)
 	return err
 }
-func (db *fireDB) GetRefreshes(limit int) ([]RefreshResult, error) {
-	var refreshes []RefreshResult
+func (db *FireDB) GetRefreshes(limit int) ([]booksing.RefreshResult, error) {
+	var refreshes []booksing.RefreshResult
 	ctx := context.Background()
-	var r RefreshResult
+	var r booksing.RefreshResult
 	iter := db.client.Collection("refreshes").OrderBy("StartTime", firestore.Desc).Limit(limit).Documents(ctx)
 	for {
-		r = RefreshResult{}
+		r = booksing.RefreshResult{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -294,7 +298,7 @@ func (db *fireDB) GetRefreshes(limit int) ([]RefreshResult, error) {
 	return refreshes, nil
 }
 
-func (db *fireDB) parseQuery(s string) firestore.Query {
+func (db *FireDB) parseQuery(s string) firestore.Query {
 	col := db.client.Collection("books")
 	var q firestore.Query
 	params := strings.Split(s, ",")
@@ -318,11 +322,11 @@ func (db *fireDB) parseQuery(s string) firestore.Query {
 	return q
 }
 
-func iterToBookList(iter *firestore.DocumentIterator) ([]Book, error) {
-	var books []Book
-	var b Book
+func iterToBookList(iter *firestore.DocumentIterator) ([]booksing.Book, error) {
+	var books []booksing.Book
+	var b booksing.Book
 	for {
-		b = Book{}
+		b = booksing.Book{}
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break

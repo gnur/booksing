@@ -1,10 +1,11 @@
-package main
+package storm
 
 import (
 	"strings"
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/gnur/booksing"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,7 +13,11 @@ type stormDB struct {
 	db *storm.DB
 }
 
-func newStormDB(path string) (*stormDB, error) {
+type Book = booksing.Book
+type download = booksing.Download
+type RefreshResult = booksing.RefreshResult
+
+func New(path string) (*stormDB, error) {
 	db, err := storm.Open(path)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -42,10 +47,10 @@ func (db *stormDB) GetBook(query string) (*Book, error) {
 		return nil, err
 	}
 	if len(results) > 1 {
-		return nil, ErrNonUniqueResult
+		return nil, booksing.ErrNonUniqueResult
 	}
 	if len(results) == 0 {
-		return nil, ErrNotFound
+		return nil, booksing.ErrNotFound
 	}
 	return &results[0], nil
 }

@@ -1,4 +1,4 @@
-package main
+package booksing
 
 import (
 	"fmt"
@@ -85,16 +85,16 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	}
 	book.Added = fi.ModTime()
 
-	book.Title = fix(book.Title, true, false)
-	book.Author = fix(book.Author, true, true)
+	book.Title = Fix(book.Title, true, false)
+	book.Author = Fix(book.Author, true, true)
 	book.Language = fixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
 	searchWords := book.Title + " " + book.Author
-	book.MetaphoneKeys = getMetaphoneKeys(searchWords)
+	book.MetaphoneKeys = GetMetaphoneKeys(searchWords)
 	book.SearchWords = getLowercasedSlice(searchWords)
 
-	book.Hash = hashBook(book.Author, book.Title)
+	book.Hash = HashBook(book.Author, book.Title)
 
 	if rename {
 		newBookPath := path.Join(baseDir, getOrganizedBookPath(&book))
@@ -197,7 +197,7 @@ func fixLang(s string) string {
 	return s
 }
 
-func fix(s string, capitalize, correctOrder bool) string {
+func Fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
 		return "Unknown"
 	}

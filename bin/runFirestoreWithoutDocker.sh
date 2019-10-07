@@ -16,7 +16,7 @@ function cleanup {
 trap 'cleanup' EXIT
 
 log "building binary"
-go build -o booksing .
+go build -o booksing ./cmd/server/
 
 log "Creating temp workspace in ${workingdir}"
 cp -a testdata $workingdir

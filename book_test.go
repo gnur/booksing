@@ -1,4 +1,4 @@
-package main
+package booksing
 
 import "testing"
 
@@ -52,7 +52,7 @@ func Test_fix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := fix(tt.args.s, tt.args.capitalize, tt.args.correctOrder); got != tt.want {
+			if got := Fix(tt.args.s, tt.args.capitalize, tt.args.correctOrder); got != tt.want {
 				t.Errorf("fix() = %v, want %v", got, tt.want)
 			}
 		})

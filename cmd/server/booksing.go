@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
 	log "github.com/sirupsen/logrus"
 )
@@ -83,9 +84,9 @@ func (app *booksingApp) bookPresent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		author := r.URL.Query().Get("author")
 		title := r.URL.Query().Get("title")
-		title = fix(title, true, false)
-		author = fix(author, true, true)
-		hash := hashBook(author, title)
+		title = booksing.Fix(title, true, false)
+		author = booksing.Fix(author, true, true)
+		hash := booksing.HashBook(author, title)
 
 		_, err := app.db.GetBookBy("Hash", hash)
 		found := err == nil
@@ -297,7 +298,7 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 			resultQ <- OldBook
 			continue
 		}
-		book, err := NewBookFromFile(filename, app.allowOrganize, app.bookDir)
+		book, err := booksing.NewBookFromFile(filename, app.allowOrganize, app.bookDir)
 		if err != nil {
 			if app.allowDeletes {
 				log.WithFields(log.Fields{
@@ -316,7 +317,7 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 				"err":  err,
 			}).Error("could not store book")
 
-			if err == ErrDuplicate {
+			if err == booksing.ErrDuplicate {
 				if app.allowDeletes {
 					log.WithFields(log.Fields{
 						"file":   filename,
