@@ -139,10 +139,7 @@ export default {
       function() {
         var vm = this;
         vm.statusMessage = "getting results";
-        var uri = "/api/search";
-        if (this.searchstring == "/dups") {
-          uri = "/api/duplicates.json";
-        }
+        var uri = "/auth/search";
         axios
           .get(uri, {
             params: {

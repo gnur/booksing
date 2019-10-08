@@ -7,24 +7,30 @@ import (
 	"path"
 	"strings"
 
+	"github.com/gin-contrib/static"
+	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing/firestore"
 	_ "github.com/gnur/booksing/firestore"
-	"github.com/gnur/booksing/mongodb"
-	_ "github.com/gnur/booksing/mongodb"
-	"github.com/gnur/booksing/storm"
-	_ "github.com/gnur/booksing/storm"
+
+	//	"github.com/gnur/booksing/mongodb"
+	//	_ "github.com/gnur/booksing/mongodb"
+	//	"github.com/gnur/booksing/storm"
+	//	_ "github.com/gnur/booksing/storm"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
+	ginlogrus "github.com/toorop/gin-logrus"
 )
 
 type configuration struct {
 	AllowDeletes  bool
 	AllowOrganize bool
 	BookDir       string `default:"."`
-	ImportDir     string `default:""`
+	ImportDir     string `default:"./import"`
 	Database      string `default:"file://booksing.db"`
 	LogLevel      string `default:"info"`
 	BindAddress   string `default:"localhost:7132"`
+	Version       string `default:"unknown"`
+	Timezone      string `default:"Europe/Amsterdam"`
 }
 
 func main() {
@@ -45,10 +51,10 @@ func main() {
 	var db database
 	if strings.HasPrefix(cfg.Database, "mongo://") {
 		log.WithField("mongohost", cfg.Database).Debug("connectiong to mongodb")
-		db, err = mongodb.New(cfg.Database)
-		if err != nil {
-			log.WithField("err", err).Fatal("could not create mongodb connection")
-		}
+		//		db, err = mongodb.New(cfg.Database)
+		//		if err != nil {
+		//			log.WithField("err", err).Fatal("could not create mongodb connection")
+		//		}
 	} else if strings.HasPrefix(cfg.Database, "firestore://") {
 		log.WithField("project", cfg.Database).Debug("using firestore")
 		project := strings.TrimPrefix(cfg.Database, "firestore://")
@@ -58,11 +64,11 @@ func main() {
 		}
 	} else if strings.HasPrefix(cfg.Database, "file://") {
 		log.WithField("filedbpath", cfg.Database).Debug("using this file")
-		db, err = storm.New(cfg.Database)
-		if err != nil {
-			log.WithField("err", err).Fatal("could not create fileDB")
-		}
-		defer db.Close()
+		//	db, err = storm.New(cfg.Database)
+		//	if err != nil {
+		//		log.WithField("err", err).Fatal("could not create fileDB")
+		//	}
+		//	defer db.Close()
 	} else {
 		log.Fatal("Please set either a mongo host or filedb path")
 	}
@@ -73,20 +79,47 @@ func main() {
 		allowOrganize: cfg.AllowOrganize,
 		bookDir:       cfg.BookDir,
 		importDir:     cfg.ImportDir,
+		logger:        log.WithField("release", cfg.Version),
 	}
 	go app.refreshLoop()
 
-	http.HandleFunc("/api/refresh", app.refreshBooks())
-	http.HandleFunc("/api/search", app.getBooks())
-	http.HandleFunc("/api/book.json", app.getBook())
-	http.HandleFunc("/api/user.json", app.getUser())
-	http.HandleFunc("/api/downloads.json", app.getDownloads())
-	http.HandleFunc("/api/refreshes.json", app.getRefreshes())
-	http.HandleFunc("/api/exists", app.bookPresent())
-	http.HandleFunc("/api/convert/", app.convertBook())
-	http.HandleFunc("/api/delete/", app.deleteBook())
-	http.HandleFunc("/api/download/", app.downloadBook())
-	http.Handle("/", http.FileServer(assetFS()))
+	r := gin.New()
+	r.Use(ginlogrus.Logger(app.logger), gin.Recovery())
+
+	bfs := BinaryFileSystem("web/dist")
+	r.Use(static.Serve("/", bfs))
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.RequestURI()
+		if strings.HasPrefix(path, "/auth") || strings.HasPrefix(path, "/api") {
+			c.JSON(404, gin.H{
+				"msg": "not found",
+			})
+			return
+		}
+		b, _ := Asset("web/dist/index.html")
+		c.Data(200, "html", b)
+	})
+
+	auth := r.Group("/auth")
+	auth.Use(gin.Recovery())
+	{
+		auth.GET("refresh", app.refreshBooks)
+		auth.GET("search", app.getBooks)
+	}
+
+	http.HandleFunc("user.json", app.getUser())
+	http.HandleFunc("downloads.json", app.getDownloads())
+	http.HandleFunc("refreshes.json", app.getRefreshes())
+	http.HandleFunc("convert/", app.convertBook())
+	http.HandleFunc("delete/", app.deleteBook())
+	http.HandleFunc("download/", app.downloadBook())
+
+	api := r.Group("/api")
+	api.Use(gin.Recovery())
+	{
+		api.GET("refresh", app.refreshBooks)
+		api.GET("exists/:author/:title", app.bookPresent)
+	}
 
 	log.Info("booksing is now running")
 	port := os.Getenv("PORT")
@@ -97,5 +130,5 @@ func main() {
 		port = fmt.Sprintf(":%s", port)
 	}
 
-	log.Fatal(http.ListenAndServe(port, nil))
+	r.Run(port)
 }

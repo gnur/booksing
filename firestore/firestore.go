@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	
 	"cloud.google.com/go/firestore"
 	"github.com/gnur/booksing"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // FireDB holds the firestore client
@@ -17,7 +18,7 @@ type FireDB struct {
 	client *firestore.Client
 }
 
-// NewFireStore returns a new firestore client
+// New returns a new firestore client
 func New(projectID string) (*FireDB, error) {
 	ctx := context.Background()
 	client, err := firestore.NewClient(ctx, projectID)
@@ -340,4 +341,72 @@ func iterToBookList(iter *firestore.DocumentIterator) ([]booksing.Book, error) {
 		}
 	}
 	return books, nil
+}
+
+func (db *FireDB) SaveUser(u *booksing.User) error {
+	ctx := context.Background()
+	_, err := db.client.Collection("users").Doc(u.Username).Set(ctx, u)
+
+	return err
+}
+
+func (db *FireDB) GetUser(username string) (booksing.User, error) {
+	ctx := context.Background()
+	var u booksing.User
+	snap, err := db.client.Collection("users").Doc(username).Get(ctx)
+
+	if grpc.Code(err) == codes.NotFound {
+		return u, booksing.ErrNotFound
+	} else if err != nil {
+		return u, err
+	}
+
+	err = snap.DataTo(&u)
+	return u, err
+}
+
+func (db *FireDB) SaveAPIKey(a *booksing.Apikey) error {
+	ctx := context.Background()
+	_, err := db.client.Collection("apikeys").Doc(a.Key).Set(ctx, a)
+
+	return err
+}
+
+func (db *FireDB) GetAPIKey(key string) (*booksing.Apikey, error) {
+	ctx := context.Background()
+	var a booksing.Apikey
+	snap, err := db.client.Collection("apikeys").Doc(key).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = snap.DataTo(&a)
+	return &a, err
+}
+
+func (db *FireDB) GetAPIKeysForUser(user string) ([]booksing.Apikey, error) {
+	ctx := context.Background()
+	var apikeys []booksing.Apikey
+	var a booksing.Apikey
+	iter := db.client.Collection("apikeys").Where("Username", "==", user).Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Failed to iterate: %v", err)
+		}
+		err = doc.DataTo(&a)
+		if err == nil {
+			apikeys = append(apikeys, a)
+		}
+	}
+	return apikeys, nil
+}
+
+func (db *FireDB) DeleteAPIKey(uuid string) error {
+	ctx := context.Background()
+	_, err := db.client.Collection("apikeys").Doc(uuid).Delete(ctx)
+
+	return err
 }

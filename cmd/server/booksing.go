@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
 	log "github.com/sirupsen/logrus"
@@ -59,7 +60,7 @@ func (app *booksingApp) downloadBook() http.HandlerFunc {
 		if r.Header.Get("x-forwarded-for") != "" {
 			ip = ip + ", " + r.Header.Get("x-forwarded-for")
 		}
-		dl := download{
+		dl := booksing.Download{
 			User:      r.Header.Get("x-auth-user"),
 			IP:        ip,
 			Book:      book.Hash,
@@ -80,31 +81,28 @@ func (app *booksingApp) downloadBook() http.HandlerFunc {
 	}
 }
 
-func (app *booksingApp) bookPresent() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		author := r.URL.Query().Get("author")
-		title := r.URL.Query().Get("title")
-		title = booksing.Fix(title, true, false)
-		author = booksing.Fix(author, true, true)
-		hash := booksing.HashBook(author, title)
+func (app *booksingApp) bookPresent(c *gin.Context) {
+	author := c.Param("author")
+	title := c.Param("title")
+	title = booksing.Fix(title, true, false)
+	author = booksing.Fix(author, true, true)
+	hash := booksing.HashBook(author, title)
 
-		_, err := app.db.GetBookBy("Hash", hash)
-		found := err == nil
+	_, err := app.db.GetBookBy("Hash", hash)
+	found := err == nil
 
-		json.NewEncoder(w).Encode(map[string]bool{"found": found})
-	}
+	c.JSON(200, map[string]bool{"found": found})
 }
 
-func (app *booksingApp) getBook() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		hash := r.URL.Query().Get("hash")
-		book, err := app.db.GetBookBy("Hash", hash)
-		if err != nil {
-			return
-		}
-		json.NewEncoder(w).Encode(book)
+func (app *booksingApp) getBook(c *gin.Context) {
+	hash := c.Param("hash")
+	book, err := app.db.GetBookBy("Hash", hash)
+	if err != nil {
+		return
 	}
+	c.JSON(200, book)
 }
+
 func (app *booksingApp) getUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := app.userIsAdmin(r)
@@ -182,17 +180,16 @@ func (app *booksingApp) convertBook() http.HandlerFunc {
 	}
 }
 
-func (app *booksingApp) getBooks() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (app *booksingApp) getBooks(c *gin.Context) {
 		var resp bookResponse
 		var limit int
-		numString := r.URL.Query().Get("results")
-		filter := strings.ToLower(r.URL.Query().Get("filter"))
+		numString := c.DefaultQuery("results", "100")
+		filter := strings.ToLower(c.Query("filter"))
 		filter = strings.TrimSpace(filter)
 		limit = 1000
 
 		log.WithFields(log.Fields{
-			"user":   r.Header.Get("x-auth-user"),
+			//"user":   r.Header.Get("x-auth-user"),
 			"filter": filter,
 		}).Info("user initiated search")
 
@@ -209,8 +206,7 @@ func (app *booksingApp) getBooks() http.HandlerFunc {
 		}
 		resp.Books = books
 
-		json.NewEncoder(w).Encode(resp)
-	}
+		c.JSON(200, resp)
 }
 
 func (app *booksingApp) refresh() {
@@ -220,7 +216,7 @@ func (app *booksingApp) refresh() {
 	}
 	defer atomic.StoreUint32(&locker, stateUnlocked)
 	log.Info("starting refresh of booklist")
-	results := RefreshResult{
+	results := booksing.RefreshResult{
 		StartTime: time.Now(),
 	}
 	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
@@ -285,10 +281,8 @@ func (app *booksingApp) refresh() {
 
 	log.WithField("result", results).Info("finished refresh of booklist")
 }
-func (app *booksingApp) refreshBooks() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		app.refresh()
-	}
+func (app *booksingApp) refreshBooks(c *gin.Context) {
+	app.refresh()
 }
 
 func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {

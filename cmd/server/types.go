@@ -3,7 +3,9 @@ package main
 import (
 	"time"
 
+	"firebase.google.com/go/auth"
 	"github.com/gnur/booksing"
+	"github.com/sirupsen/logrus"
 )
 
 type booksingApp struct {
@@ -12,10 +14,10 @@ type booksingApp struct {
 	allowOrganize bool
 	bookDir       string
 	importDir     string
+	logger        *logrus.Entry
+	authClient    *auth.Client
+	timezone      *time.Location
 }
-
-type download = booksing.Download
-type RefreshResult = booksing.RefreshResult
 
 type bookResponse struct {
 	Books      []booksing.Book `json:"books"`
@@ -46,7 +48,15 @@ type database interface {
 	AddDownload(booksing.Download) error
 	GetDownloads(int) ([]booksing.Download, error)
 
-	AddRefresh(RefreshResult) error
-	GetRefreshes(int) ([]RefreshResult, error)
+	SaveAPIKey(*booksing.Apikey) error
+	GetAPIKey(string) (*booksing.Apikey, error)
+	GetAPIKeysForUser(string) ([]booksing.Apikey, error)
+	DeleteAPIKey(string) error
+
+	SaveUser(*booksing.User) error
+	GetUser(string) (booksing.User, error)
+
+	AddRefresh(booksing.RefreshResult) error
+	GetRefreshes(int) ([]booksing.RefreshResult, error)
 	Close()
 }

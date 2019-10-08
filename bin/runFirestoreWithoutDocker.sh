@@ -15,6 +15,10 @@ function cleanup {
 
 trap 'cleanup' EXIT
 
+#log "building static assets"
+#cd web; yarn build; cd -;
+#go-bindata web/dist/...; mv bindata.go cmd/server/bindata.go
+
 log "building binary"
 go build -o booksing ./cmd/server/
 
