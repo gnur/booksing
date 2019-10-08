@@ -55,6 +55,7 @@ type database interface {
 
 	SaveUser(*booksing.User) error
 	GetUser(string) (booksing.User, error)
+	//TODO: GetUsers(string) (booksing.User, error)
 
 	AddRefresh(booksing.RefreshResult) error
 	GetRefreshes(int) ([]booksing.RefreshResult, error)

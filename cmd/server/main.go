@@ -18,7 +18,6 @@ import (
 	//	_ "github.com/gnur/booksing/storm"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
-	ginlogrus "github.com/toorop/gin-logrus"
 )
 
 type configuration struct {
@@ -84,7 +83,7 @@ func main() {
 	go app.refreshLoop()
 
 	r := gin.New()
-	r.Use(ginlogrus.Logger(app.logger), gin.Recovery())
+	r.Use(Logger(app.logger), gin.Recovery())
 
 	bfs := BinaryFileSystem("web/dist")
 	r.Use(static.Serve("/", bfs))
@@ -103,21 +102,24 @@ func main() {
 	auth := r.Group("/auth")
 	auth.Use(gin.Recovery())
 	{
-		auth.GET("refresh", app.refreshBooks)
 		auth.GET("search", app.getBooks)
+		auth.GET("user.json", app.getUser)
+		http.HandleFunc("convert", app.convertBook())
+		auth.GET("download", app.downloadBook)
 	}
 
-	http.HandleFunc("user.json", app.getUser())
-	http.HandleFunc("downloads.json", app.getDownloads())
-	http.HandleFunc("refreshes.json", app.getRefreshes())
-	http.HandleFunc("convert/", app.convertBook())
-	http.HandleFunc("delete/", app.deleteBook())
-	http.HandleFunc("download/", app.downloadBook())
+	admin := r.Group("/admin")
+	admin.Use(gin.Recovery())
+	{
+		http.HandleFunc("downloads.json", app.getDownloads())
+		http.HandleFunc("refreshes.json", app.getRefreshes())
+		admin.POST("refresh", app.refreshBooks)
+		admin.POST("delete", app.deleteBook)
+	}
 
 	api := r.Group("/api")
 	api.Use(gin.Recovery())
 	{
-		api.GET("refresh", app.refreshBooks)
 		api.GET("exists/:author/:title", app.bookPresent)
 	}
 

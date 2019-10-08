@@ -41,12 +41,12 @@
           <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
           <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
           <b-table-column field="dl" label="epub">
-            <a :href="'/api/download/?book=' + props.row.filename">download</a>
+            <a :href="'/auth/download/?book=' + props.row.filename">download</a>
           </b-table-column>
           <b-table-column field="convert" label="mobi" :visible="isAdmin">
             <a
               v-if="props.row.hasmobi"
-              :href="'/api/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
+              :href="'/auth/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
             >.mobi</a>
             <a v-else @click="convertBook(props.row.hash)">convert</a>
           </b-table-column>
@@ -126,7 +126,7 @@ export default {
       const params = new URLSearchParams();
       params.append("hash", hash);
       axios
-        .post("/api/convert/", params)
+        .post("/auth/convert/", params)
         .then(function(response) {
           vm.getBooks();
           console.log(response);
@@ -173,7 +173,7 @@ export default {
         const params = new URLSearchParams();
         params.append("hash", book.hash);
         axios
-          .post("/api/delete/", params)
+          .post("/admin/delete", params)
           .then(function(response) {
             vm.getBooks();
           })
@@ -186,7 +186,7 @@ export default {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";
       axios
-        .get("/api/refresh")
+        .get("/admin/refresh")
         .then(function(response) {
           vm.refreshButtonText = "refresh";
           vm.getBooks();
@@ -199,7 +199,7 @@ export default {
     getUser: function() {
       var vm = this;
       axios
-        .get("/api/user.json")
+        .get("/auth/user.json")
         .then(function(response) {
           vm.isAdmin = response.data.admin;
         })
