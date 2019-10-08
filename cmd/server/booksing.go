@@ -144,31 +144,41 @@ func (app *booksingApp) getRefreshes() http.HandlerFunc {
 	}
 }
 
-func (app *booksingApp) convertBook() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseForm()
-		if err != nil {
-			log.WithField("err", err).Error("could not parse form data")
-			return
-		}
-		hash := r.Form.Get("hash")
-		book, err := app.db.GetBookBy("Hash", hash)
-		if err != nil {
-			return
-		}
-		log.WithField("book", book.Filepath).Debug("converting to mobi")
-		mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
-		cmd := exec.Command("ebook-convert", book.Filepath, mobiPath)
-
-		_, err = cmd.CombinedOutput()
-		if err != nil {
-			log.WithField("err", err).Error("Command finished with error")
-		} else {
-			app.db.SetBookConverted(hash)
-			log.WithField("book", book.Filepath).Debug("conversion successful")
-		}
-		json.NewEncoder(w).Encode(book)
+func (app *booksingApp) convertBook(c *gin.Context) {
+	var req deleteRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"text": err.Error(),
+		})
+		return
 	}
+	app.logger.WithField("req", req).Info("got delete request")
+	hash := req.Hash
+
+	book, err := app.db.GetBookBy("Hash", hash)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"text": err.Error(),
+		})
+		return
+	}
+	log.WithField("book", book.Filepath).Debug("converting to mobi")
+	mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+	cmd := exec.Command("ebook-convert", book.Filepath, mobiPath)
+
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		log.WithField("err", err).Error("Command finished with error")
+		c.JSON(500, gin.H{
+			"text": err.Error(),
+		})
+		return
+	} else {
+		app.db.SetBookConverted(hash)
+		log.WithField("book", book.Filepath).Debug("conversion successful")
+	}
+
+	c.JSON(200, book)
 }
 
 func (app *booksingApp) getBooks(c *gin.Context) {

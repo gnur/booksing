@@ -104,7 +104,11 @@ func main() {
 	{
 		auth.GET("search", app.getBooks)
 		auth.GET("user.json", app.getUser)
-		http.HandleFunc("convert", app.convertBook())
+
+		auth.POST("/apikey", app.addAPIKey)
+		auth.DELETE("/apikey/:uuid", app.deleteAPIKey)
+
+		auth.POST("convert", app.convertBook)
 		auth.GET("download", app.downloadBook)
 	}
 

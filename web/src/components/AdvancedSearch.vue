@@ -126,7 +126,7 @@ export default {
       const params = new URLSearchParams();
       params.append("hash", hash);
       axios
-        .post("/auth/convert/", params)
+        .post("/auth/convert", params)
         .then(function(response) {
           vm.getBooks();
           console.log(response);

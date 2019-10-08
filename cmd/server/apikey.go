@@ -21,7 +21,7 @@ func (app *booksingApp) addAPIKey(c *gin.Context) {
 	log.WithField("keyid", a.ID).Info("adding key")
 	a.Created = time.Now().In(app.timezone)
 	a.Key = uuid.Must(uuid.NewV4()).String()
-	user, _ := c.Get("id")
+	user := c.MustGet("id")
 	username := user.(*booksing.User).Username
 	a.Username = username
 
