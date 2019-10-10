@@ -1,6 +1,7 @@
 #!/bin/bash
 
 workingdir=$(mktemp -d)
+mkdir "${workingdir}/import"
 
 function log {
     echo "> $(date +%T) $*"
@@ -11,6 +12,8 @@ function cleanup {
     kill $(jobs -p)
     log "Removing old workdir"
     rm -rf workingdir
+    log "Emptying database"
+    firebase firestore:delete -y -r /envs/dev
 }
 
 trap 'cleanup' EXIT
@@ -20,16 +23,16 @@ trap 'cleanup' EXIT
 #go-bindata web/dist/...; mv bindata.go cmd/server/bindata.go
 
 log "building binary"
-go build -o booksing ./cmd/server/
+go build -o booksing ./cmd/server/ || exit 1
 
 log "Creating temp workspace in ${workingdir}"
-cp -a testdata $workingdir
+cp -a testdata/import/gutenberg/* $workingdir/import/
 
 export BOOKSING_LOGLEVEL=debug
 export BOOKSING_DATABASE="firestore://booksing-erwin-land"
 export GOOGLE_APPLICATION_CREDENTIALS="booksing-creds.json"
-export BOOKSING_IMPORTDIR="${workingdir}/testdata/import"
-export BOOKSING_BOOKDIR="${workingdir}/testdata/"
+export BOOKSING_IMPORTDIR="${workingdir}/import"
+export BOOKSING_BOOKDIR="${workingdir}/"
 
 
 log "running booksing"

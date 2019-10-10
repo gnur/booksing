@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -39,23 +38,18 @@ func (app *booksingApp) refreshLoop() {
 
 func (app *booksingApp) downloadBook(c *gin.Context) {
 
-	fileName := c.Query("book")
-	toMobi := strings.HasSuffix(fileName, ".mobi")
-	if toMobi {
-		fileName = strings.Replace(fileName, ".mobi", ".epub", 1)
-	}
+	hash := c.Query("hash")
+	index := c.Query("index")
 
-	book, err := app.db.GetBookBy("Filename", fileName)
+	book, err := app.db.GetBookBy("Hash", hash)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"filename": fileName,
+		app.logger.WithFields(logrus.Fields{
+			"err":  err,
+			"hash": hash,
 		}).Error("could not find book")
 		return
 	}
-	if toMobi {
-		book.Filepath = strings.Replace(book.Filepath, ".epub", ".mobi", 1)
-	}
+
 	ip := c.ClientIP()
 	dl := booksing.Download{
 		//			User:      r.Header.Get("x-auth-user"),
@@ -66,11 +60,27 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	}
 	err = app.db.AddDownload(dl)
 	if err != nil {
-		log.WithField("err", err).Error("could not store download")
+		app.logger.WithField("err", err).Error("could not store download")
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
-	c.File(book.Filepath)
+	fileLocation, exists := book.Locations[index]
+	if !exists {
+		app.logger.WithFields(logrus.Fields{
+			"hash":  hash,
+			"index": index,
+		}).Warning("invalid index provided")
+		c.JSON(404, gin.H{
+			"text": "file not found",
+		})
+		return
+	}
+
+	if fileLocation.Type == booksing.FileStorage && fileLocation.File != nil {
+		c.Header("Content-Disposition",
+			fmt.Sprintf("attachment; filename=\"%s\"", path.Base(fileLocation.File.Path)))
+		c.File(fileLocation.File.Path)
+		return
+	}
 }
 
 func (app *booksingApp) bookPresent(c *gin.Context) {
@@ -109,7 +119,7 @@ func (app *booksingApp) userIsAdmin(r *http.Request) bool {
 	if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
 		admin = true
 	}
-	log.WithFields(log.Fields{
+	app.logger.WithFields(logrus.Fields{
 		"x-auth-user": user,
 		"admin":       admin,
 		"env-user":    os.Getenv("ADMIN_USER"),
@@ -119,29 +129,30 @@ func (app *booksingApp) userIsAdmin(r *http.Request) bool {
 
 }
 
-func (app *booksingApp) getDownloads() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		admin := app.userIsAdmin(r)
-		if !admin {
-			json.NewEncoder(w).Encode([]bool{})
-			return
-		}
-		downloads, _ := app.db.GetDownloads(200)
-
-		json.NewEncoder(w).Encode(downloads)
+func (app *booksingApp) getDownloads(c *gin.Context) {
+	//admin := app.userIsAdmin(r)
+	admin := true
+	if !admin {
+		c.JSON(403, gin.H{
+			"text": "access denied",
+		})
+		return
 	}
+	downloads, _ := app.db.GetDownloads(200)
+	c.JSON(200, downloads)
 }
-func (app *booksingApp) getRefreshes() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		admin := app.userIsAdmin(r)
-		if !admin {
-			json.NewEncoder(w).Encode([]bool{})
-			return
-		}
-		refreshes, _ := app.db.GetRefreshes(200)
 
-		json.NewEncoder(w).Encode(refreshes)
+func (app *booksingApp) getRefreshes(c *gin.Context) {
+	//admin := app.userIsAdmin(r)
+	admin := true
+	if !admin {
+		c.JSON(403, gin.H{
+			"text": "access denied",
+		})
+		return
 	}
+	refreshes, _ := app.db.GetRefreshes(200)
+	c.JSON(200, refreshes)
 }
 
 func (app *booksingApp) convertBook(c *gin.Context) {
@@ -162,22 +173,22 @@ func (app *booksingApp) convertBook(c *gin.Context) {
 		})
 		return
 	}
-	log.WithField("book", book.Filepath).Debug("converting to mobi")
-	mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
-	cmd := exec.Command("ebook-convert", book.Filepath, mobiPath)
+	//TODO: fix this
+	app.logger.WithField("book", book.Hash).Debug("converting to mobi")
+	mobiPath := strings.Replace(book.Hash, ".epub", ".mobi", 1)
+	cmd := exec.Command("ebook-convert", book.Hash, mobiPath)
 
 	_, err = cmd.CombinedOutput()
 	if err != nil {
-		log.WithField("err", err).Error("Command finished with error")
+		app.logger.WithField("err", err).Error("Command finished with error")
 		c.JSON(500, gin.H{
 			"text": err.Error(),
 		})
 		return
-	} else {
-		app.db.SetBookConverted(hash)
-		log.WithField("book", book.Filepath).Debug("conversion successful")
 	}
 
+	app.db.SetBookConverted(hash)
+	app.logger.WithField("book", book.Hash).Debug("conversion successful")
 	c.JSON(200, book)
 }
 
@@ -189,7 +200,7 @@ func (app *booksingApp) getBooks(c *gin.Context) {
 	filter = strings.TrimSpace(filter)
 	limit = 1000
 
-	log.WithFields(log.Fields{
+	app.logger.WithFields(logrus.Fields{
 		//"user":   r.Header.Get("x-auth-user"),
 		"filter": filter,
 	}).Info("user initiated search")
@@ -203,7 +214,7 @@ func (app *booksingApp) getBooks(c *gin.Context) {
 
 	books, err := app.db.GetBooks(filter, limit)
 	if err != nil {
-		log.WithField("err", err).Error("error retrieving books")
+		app.logger.WithField("err", err).Error("error retrieving books")
 	}
 	resp.Books = books
 
@@ -212,24 +223,24 @@ func (app *booksingApp) getBooks(c *gin.Context) {
 
 func (app *booksingApp) refresh() {
 	if !atomic.CompareAndSwapUint32(&locker, stateUnlocked, stateLocked) {
-		log.Warning("not refreshing because it is already running")
+		app.logger.Warning("not refreshing because it is already running")
 		return
 	}
 	defer atomic.StoreUint32(&locker, stateUnlocked)
-	log.Info("starting refresh of booklist")
+	app.logger.Info("starting refresh of booklist")
 	results := booksing.RefreshResult{
 		StartTime: time.Now(),
 	}
 	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
 	if err != nil {
-		log.WithField("err", err).Error("glob of all books failed")
+		app.logger.WithField("err", err).Error("glob of all books failed")
 		return
 	}
 	if len(matches) == 0 {
-		log.Info("finished refresh of booklist, no new books found")
+		app.logger.Info("finished refresh of booklist, no new books found")
 		return
 	}
-	log.WithFields(log.Fields{
+	app.logger.WithFields(logrus.Fields{
 		"total":   len(matches),
 		"bookdir": app.bookDir,
 	}).Info("located books on filesystem")
@@ -259,7 +270,7 @@ func (app *booksingApp) refresh() {
 			results.Duplicate++
 		}
 		if a > 0 && a%100 == 0 {
-			log.WithFields(log.Fields{
+			app.logger.WithFields(logrus.Fields{
 				"processed": a,
 				"total":     len(matches),
 			}).Info("processing books")
@@ -268,19 +279,19 @@ func (app *booksingApp) refresh() {
 	}
 	total := app.db.BookCount()
 	if err != nil {
-		log.WithField("err", err).Error("could not get total book count")
+		app.logger.WithField("err", err).Error("could not get total book count")
 	}
 	results.Old = total
 	results.StopTime = time.Now()
 	err = app.db.AddRefresh(results)
 	if err != nil {
-		log.WithFields(log.Fields{
+		app.logger.WithFields(logrus.Fields{
 			"err":     err,
 			"results": results,
 		}).Error("Could not save refresh results")
 	}
 
-	log.WithField("result", results).Info("finished refresh of booklist")
+	app.logger.WithField("result", results).Info("finished refresh of booklist")
 }
 func (app *booksingApp) refreshBooks(c *gin.Context) {
 	app.refresh()
@@ -296,7 +307,7 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 		book, err := booksing.NewBookFromFile(filename, app.allowOrganize, app.bookDir)
 		if err != nil {
 			if app.allowDeletes {
-				log.WithFields(log.Fields{
+				app.logger.WithFields(logrus.Fields{
 					"file":   filename,
 					"reason": "invalid",
 				}).Info("Deleting book")
@@ -307,14 +318,14 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 		}
 		err = app.db.AddBook(book)
 		if err != nil {
-			log.WithFields(log.Fields{
+			app.logger.WithFields(logrus.Fields{
 				"file": filename,
 				"err":  err,
 			}).Error("could not store book")
 
 			if err == booksing.ErrDuplicate {
 				if app.allowDeletes {
-					log.WithFields(log.Fields{
+					app.logger.WithFields(logrus.Fields{
 						"file":   filename,
 						"reason": "duplicate",
 					}).Info("Deleting book")
@@ -325,6 +336,16 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 		} else {
 			resultQ <- AddedBook
 		}
+	}
+}
+
+func (app *booksingApp) addBook(c *gin.Context) {
+	var b booksing.Book
+	if err := c.ShouldBindJSON(&b); err != nil {
+		c.JSON(400, gin.H{
+			"text": "invalid input",
+		})
+		return
 	}
 }
 
@@ -352,13 +373,14 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	if book.HasMobi {
-		mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+	//TODO: fix this to use the new indexing
+	if book.HasMobi() {
+		mobiPath := strings.Replace(book.Hash, ".epub", ".mobi", 1)
 		os.Remove(mobiPath)
 	}
-	os.Remove(book.Filepath)
+	os.Remove(book.Hash)
 	if err != nil {
-		app.logger.WithFields(log.Fields{
+		app.logger.WithFields(logrus.Fields{
 			"hash": hash,
 			"err":  err,
 		}).Error("Could not delete book from filesystem")
@@ -367,13 +389,13 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 
 	err = app.db.DeleteBook(hash)
 	if err != nil {
-		log.WithFields(log.Fields{
+		app.logger.WithFields(logrus.Fields{
 			"hash": hash,
 			"err":  err,
 		}).Error("Could not delete book from database")
 		return
 	}
-	log.WithFields(log.Fields{
+	app.logger.WithFields(logrus.Fields{
 		"hash": hash,
 	}).Info("book was deleted")
 	c.JSON(200, gin.H{

@@ -41,12 +41,12 @@
           <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
           <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
           <b-table-column field="dl" label="epub">
-            <a :href="'/auth/download/?book=' + props.row.filename">download</a>
+            <a :href="'/auth/download?hash=' + props.row.hash + '&index=epub'">download</a>
           </b-table-column>
           <b-table-column field="convert" label="mobi" :visible="isAdmin">
             <a
               v-if="props.row.hasmobi"
-              :href="'/auth/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
+              :href="'/auth/download?hash=' + props.row.hash + '&index=mobi'"
             >.mobi</a>
             <a v-else @click="convertBook(props.row.hash)">convert</a>
           </b-table-column>

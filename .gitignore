@@ -10,3 +10,5 @@ testdata/odd-collection/*
 .idea
 *.db
 booksing-creds.json
+.firebaserc
+firebase.json

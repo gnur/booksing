@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -30,6 +29,7 @@ type configuration struct {
 	BindAddress   string `default:"localhost:7132"`
 	Version       string `default:"unknown"`
 	Timezone      string `default:"Europe/Amsterdam"`
+	Mode          string `default:"dev"`
 }
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	} else if strings.HasPrefix(cfg.Database, "firestore://") {
 		log.WithField("project", cfg.Database).Debug("using firestore")
 		project := strings.TrimPrefix(cfg.Database, "firestore://")
-		db, err = firestore.New(project)
+		db, err = firestore.New(project, cfg.Mode)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create firestore client")
 		}
@@ -115,8 +115,8 @@ func main() {
 	admin := r.Group("/admin")
 	admin.Use(gin.Recovery())
 	{
-		http.HandleFunc("downloads.json", app.getDownloads())
-		http.HandleFunc("refreshes.json", app.getRefreshes())
+		admin.GET("downloads.json", app.getDownloads)
+		admin.GET("refreshes.json", app.getRefreshes)
 		admin.POST("refresh", app.refreshBooks)
 		admin.POST("delete", app.deleteBook)
 	}
@@ -125,6 +125,7 @@ func main() {
 	api.Use(gin.Recovery())
 	{
 		api.GET("exists/:author/:title", app.bookPresent)
+		api.PUT("book", app.addBook)
 	}
 
 	log.Info("booksing is now running")

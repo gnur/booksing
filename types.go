@@ -33,3 +33,10 @@ type PipelineResult struct {
 	Count  int      `bson:"count"`
 	Hashes []string `bson:"docs"`
 }
+
+type AddBookInput struct {
+	Title       string `json:"title"`
+	Author      string `json:"author"`
+	Language    string `json:"language"`
+	Description string `json:"description"`
+}
