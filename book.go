@@ -12,17 +12,18 @@ import (
 
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
+	minio "github.com/minio/minio-go"
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
-type StorageLocation uint8
+type StorageLocation string
 
 const (
-	S3Storage StorageLocation = iota
-	FileStorage
+	S3Storage   StorageLocation = "S3"
+	FileStorage StorageLocation = "FILE"
 )
 
 // Book represents a book record in the database, regular "book" data with extra metadata
@@ -50,6 +51,23 @@ type S3Location struct {
 	Host   string
 	Bucket string
 	Key    string
+}
+
+func (s *S3Location) GetDLLink() (string, error) {
+	accessKeyID := os.Getenv("ACCESS_KEY_ID")
+	secretAccessKey := os.Getenv("SECRET_ACCESS_KEY")
+
+	mc, err := minio.New(s.Host, accessKeyID, secretAccessKey, true)
+
+	if err != nil {
+		return "", err
+	}
+	url, err := mc.PresignedGetObject(s.Bucket, s.Key, 12*time.Hour, nil)
+
+	if err != nil {
+		return "", err
+	}
+	return url.String(), nil
 }
 
 type FileLocation struct {
@@ -120,12 +138,12 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 
 	book.Title = Fix(book.Title, true, false)
 	book.Author = Fix(book.Author, true, true)
-	book.Language = fixLang(book.Language)
+	book.Language = FixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
 	searchWords := book.Title + " " + book.Author
 	book.MetaphoneKeys = GetMetaphoneKeys(searchWords)
-	book.SearchWords = getLowercasedSlice(searchWords)
+	book.SearchWords = GetLowercasedSlice(searchWords)
 
 	book.Hash = HashBook(book.Author, book.Title)
 
@@ -174,7 +192,7 @@ func GetBookPath(title, author string) string {
 	return formatted
 }
 
-func fixLang(s string) string {
+func FixLang(s string) string {
 	s = strings.ToLower(s)
 
 	switch s {

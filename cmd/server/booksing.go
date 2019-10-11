@@ -37,7 +37,6 @@ func (app *booksingApp) refreshLoop() {
 
 func (app *booksingApp) downloadBook(c *gin.Context) {
 
-	//TODO: fix downloads with new auth scheme
 	hash := c.Query("hash")
 	index := c.Query("index")
 
@@ -80,6 +79,16 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		c.Header("Content-Disposition",
 			fmt.Sprintf("attachment; filename=\"%s\"", fName))
 		c.File(fileLocation.File.Path)
+		return
+	}
+	if fileLocation.Type == booksing.S3Storage && fileLocation.S3 != nil {
+		url, err := fileLocation.S3.GetDLLink()
+		if err != nil {
+			c.JSON(500, gin.H{
+				"text": err,
+			})
+		}
+		c.Redirect(302, url)
 		return
 	}
 }
@@ -393,14 +402,46 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 	}
 }
 
+type bookInput struct {
+	Title       string
+	Author      string
+	Language    string
+	Description string
+	Locations   map[string]booksing.Location
+}
+
 func (app *booksingApp) addBook(c *gin.Context) {
-	var b booksing.Book
+	var b bookInput
 	if err := c.ShouldBindJSON(&b); err != nil {
 		c.JSON(400, gin.H{
 			"text": "invalid input",
 		})
 		return
 	}
+
+	var book booksing.Book
+	book.Author = booksing.Fix(b.Author, true, true)
+	book.Title = booksing.Fix(b.Title, true, false)
+	book.Language = booksing.FixLang(b.Language)
+	book.Description = b.Description
+	book.Locations = b.Locations
+
+	searchWords := book.Title + " " + book.Author
+	book.MetaphoneKeys = booksing.GetMetaphoneKeys(searchWords)
+	book.SearchWords = booksing.GetLowercasedSlice(searchWords)
+	book.Hash = booksing.HashBook(book.Author, book.Title)
+
+	book.Added = time.Now().In(app.timezone)
+
+	err := app.db.AddBook(&book)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"text": err,
+		})
+		return
+	}
+	c.JSON(200, book)
+
 }
 
 func (app *booksingApp) addBooks(c *gin.Context) {

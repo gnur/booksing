@@ -12,6 +12,7 @@ require (
 	github.com/gin-contrib/static v0.0.0-20190913125243-df30d4057ba1
 	github.com/gin-gonic/gin v1.4.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+	github.com/go-ini/ini v1.48.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/jaffee/commandeer v0.2.0
@@ -19,6 +20,8 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-zglob v0.0.1
+	github.com/minio/minio-go v6.0.14+incompatible
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/toorop/gin-logrus v0.0.0-20190701131413-6c374ad36b67
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect

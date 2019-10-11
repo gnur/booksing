@@ -96,7 +96,7 @@ func generalizer(s string) string {
 	return s
 }
 
-func getLowercasedSlice(s string) []string {
+func GetLowercasedSlice(s string) []string {
 	var returnParts []string
 	parts := strings.Split(s, " ")
 	for _, part := range parts {
