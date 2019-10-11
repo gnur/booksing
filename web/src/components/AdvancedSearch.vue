@@ -81,7 +81,7 @@
                     class="level-item"
                     @click="convertBook(props.row.hash)"
                   >
-                    <b-icon icon="refresh"></b-icon>
+                    <b-icon icon="shape-polygon-plus"></b-icon>
                     <span>create .mobi</span>
                   </a>
                 </div>
@@ -109,6 +109,7 @@
 <script>
 import axios from "axios";
 import lodash from "lodash";
+import router from "../router";
 
 export default {
   name: "home",
@@ -133,6 +134,8 @@ export default {
   mounted: function() {
     this.getUser();
     this.getBooks();
+    axios.defaults.headers.common["Authorization"] =
+      "Bearer " + this.$store.getters.token;
   },
 
   methods: {
@@ -209,6 +212,9 @@ export default {
           })
           .catch(function(error) {
             vm.statusMessage = "Something went wrong";
+            if (error.response && error.response.status == 403) {
+              router.push({ name: "login" });
+            }
             console.log(error);
           });
       },

@@ -37,6 +37,7 @@ func (app *booksingApp) refreshLoop() {
 
 func (app *booksingApp) downloadBook(c *gin.Context) {
 
+	//TODO: fix downloads with new auth scheme
 	hash := c.Query("hash")
 	index := c.Query("index")
 
@@ -363,6 +364,16 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 
 func (app *booksingApp) addBook(c *gin.Context) {
 	var b booksing.Book
+	if err := c.ShouldBindJSON(&b); err != nil {
+		c.JSON(400, gin.H{
+			"text": "invalid input",
+		})
+		return
+	}
+}
+
+func (app *booksingApp) addBooks(c *gin.Context) {
+	var b []booksing.Book
 	if err := c.ShouldBindJSON(&b); err != nil {
 		c.JSON(400, gin.H{
 			"text": "invalid input",

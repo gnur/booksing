@@ -2,6 +2,7 @@ package firestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -99,9 +100,19 @@ func (db *FireDB) DeleteBook(hash string) error {
 	return err
 }
 
-func (db *FireDB) SetBookConverted(hash string) error {
+func (db *FireDB) AddLocation(hash, index string, loc booksing.Location) error {
 	ctx := context.Background()
 	book, _ := db.GetBookBy("Hash", hash)
+
+	if _, exists := book.Locations[index]; exists {
+		return errors.New("type already exists")
+	}
+
+	if book.Locations == nil {
+		book.Locations = make(map[string]booksing.Location)
+	}
+
+	book.Locations[index] = loc
 
 	//TODO: add mobi
 	_, err := db.c.Collection("books").Doc(hash).Set(ctx, book)

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"strings"
+	"time"
 
+	firebase "firebase.google.com/go"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing/firestore"
@@ -47,6 +50,19 @@ func main() {
 		cfg.ImportDir = path.Join(cfg.BookDir, "import")
 	}
 
+	// setup firebase for verification
+	fb, err := firebase.NewApp(context.Background(), &firebase.Config{
+		ProjectID: "",
+	})
+	if err != nil {
+		log.Fatalf("error initializing app: %v\n", err)
+	}
+
+	client, err := fb.Auth(context.Background())
+	if err != nil {
+		log.Fatalf("error initializing firebase auth client: %v\n", err)
+	}
+
 	var db database
 	if strings.HasPrefix(cfg.Database, "mongo://") {
 		log.WithField("mongohost", cfg.Database).Debug("connectiong to mongodb")
@@ -72,12 +88,19 @@ func main() {
 		log.Fatal("Please set either a mongo host or filedb path")
 	}
 
+	tz, err := time.LoadLocation(cfg.Timezone)
+	if err != nil {
+		log.WithField("err", err).Fatal("could not load timezone")
+	}
+
 	app := booksingApp{
 		db:            db,
 		allowDeletes:  cfg.AllowDeletes,
 		allowOrganize: cfg.AllowOrganize,
 		bookDir:       cfg.BookDir,
 		importDir:     cfg.ImportDir,
+		timezone:      tz,
+		authClient:    client,
 		logger:        log.WithField("release", cfg.Version),
 	}
 	go app.refreshLoop()
@@ -100,16 +123,18 @@ func main() {
 	})
 
 	auth := r.Group("/auth")
-	auth.Use(gin.Recovery())
+	auth.Use(gin.Recovery(), app.BearerTokenMiddleware())
 	{
 		auth.GET("search", app.getBooks)
 		auth.GET("user.json", app.getUser)
 
+		auth.GET("/apikey", app.getAPIKeys)
 		auth.POST("/apikey", app.addAPIKey)
 		auth.DELETE("/apikey/:uuid", app.deleteAPIKey)
 
 		auth.POST("convert", app.convertBook)
 		auth.GET("download", app.downloadBook)
+
 	}
 
 	admin := r.Group("/admin")
@@ -126,6 +151,7 @@ func main() {
 	{
 		api.GET("exists/:author/:title", app.bookPresent)
 		api.PUT("book", app.addBook)
+		api.PUT("books", app.addBooks)
 	}
 
 	log.Info("booksing is now running")

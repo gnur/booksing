@@ -59,3 +59,22 @@ func (app *booksingApp) deleteAPIKey(c *gin.Context) {
 		"text": "ok",
 	})
 }
+
+func (app *booksingApp) getAPIKeys(c *gin.Context) {
+	user, _ := c.Get("id")
+	username := user.(*booksing.User).Username
+
+	var u struct {
+		APIKeys []booksing.Apikey
+	}
+
+	apikeys, err := app.db.GetAPIKeysForUser(username)
+	if err != nil {
+		app.logger.WithField("err", err).Error("could not get apikeys for user")
+	}
+	u.APIKeys = apikeys
+
+	c.JSON(200, gin.H{
+		"user": u,
+	})
+}
