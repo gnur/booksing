@@ -52,11 +52,24 @@ export default {
       if (user) {
         // User is signed in.
         user.getIdToken(true).then(idToken => {
-          store.dispatch("login", {
-            username: user.email,
-            token: idToken
-          });
-          router.push({ name: "home" });
+          firebase
+            .auth()
+            .currentUser.getIdToken(/* forceRefresh */ true)
+            .then(function(idToken) {
+              axios
+                .post("/checkToken", { idToken: idToken })
+                .then(resp => {
+                  store.dispatch("login", {
+                    username: user.email,
+                    token: idToken
+                  });
+                  router.push({ name: "home" });
+                })
+                .catch(err => {
+                  console.log(err);
+                  this.showErrorAlert(err);
+                });
+            });
         });
       } else {
         this.loading = false;
@@ -77,7 +90,6 @@ export default {
           var token = result.credential.accessToken;
           var idToken = result.credential.idToken;
           // The signed-in user info.
-          console.dir(result);
           var user = result.user;
           firebase
             .auth()
@@ -86,7 +98,10 @@ export default {
               axios
                 .post("/checkToken", { idToken: idToken })
                 .then(resp => {
-                  store.dispatch("login", user.email);
+                  store.dispatch("login", {
+                    username: user.email,
+                    token: idToken
+                  });
                   router.push({ name: "home" });
                 })
                 .catch(err => {

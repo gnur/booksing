@@ -17,6 +17,7 @@ type booksingApp struct {
 	logger        *logrus.Entry
 	authClient    *auth.Client
 	timezone      *time.Location
+	FQDN          string
 }
 
 type bookResponse struct {

@@ -132,10 +132,10 @@ export default {
     }
   },
   mounted: function() {
-    this.getUser();
-    this.getBooks();
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + this.$store.getters.token;
+    this.getBooks();
+    this.getUser();
   },
 
   methods: {

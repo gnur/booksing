@@ -33,6 +33,7 @@ type configuration struct {
 	Version       string `default:"unknown"`
 	Timezone      string `default:"Europe/Amsterdam"`
 	Mode          string `default:"dev"`
+	FQDN          string `default:"localhost:8080"`
 }
 
 func main() {
@@ -101,6 +102,7 @@ func main() {
 		importDir:     cfg.ImportDir,
 		timezone:      tz,
 		authClient:    client,
+		FQDN:          cfg.FQDN,
 		logger:        log.WithField("release", cfg.Version),
 	}
 	go app.refreshLoop()
@@ -121,6 +123,8 @@ func main() {
 		b, _ := Asset("web/dist/index.html")
 		c.Data(200, "html", b)
 	})
+
+	r.POST("/checkToken", app.checkToken)
 
 	auth := r.Group("/auth")
 	auth.Use(gin.Recovery(), app.BearerTokenMiddleware())

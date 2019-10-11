@@ -4,7 +4,7 @@
       <b-icon icon="refresh"></b-icon>
       <span>{{ refreshButtonText }}</span>
     </button>
-    <router-link :to="{ name: 'new' }" class="button field is-info">search</router-link>
+    <router-link :to="{ name: 'home' }" class="button field is-info">search</router-link>
     <b-tabs position="is-centered" class="block">
       <b-tab-item label="downloads">
         <b-table :data="downloads" paginated striped narrowed per-page="50">

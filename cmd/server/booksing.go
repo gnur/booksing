@@ -114,6 +114,37 @@ func (app *booksingApp) getUser(c *gin.Context) {
 	})
 }
 
+func (app *booksingApp) checkToken(c *gin.Context) {
+	var req struct {
+		IDToken string `json:"idToken"`
+	}
+	if err := c.ShouldBind(&req); err != nil {
+		app.logger.Warning("invalid data provided")
+		c.JSON(400, gin.H{
+			"text": "invalid data provided input",
+		})
+		return
+	}
+
+	idToken := req.IDToken
+	app.logger.WithField("idToken", idToken).Info("got token")
+
+	token, err := app.authClient.VerifyIDToken(c, idToken)
+	if err != nil {
+		app.logger.WithField("err", err).Error("error verifying ID token")
+		c.JSON(403, gin.H{
+			"text": "access denied",
+		})
+		return
+	}
+
+	app.logger.WithField("token", token).Info("received valid token")
+	c.SetCookie("Authorization", idToken, 3600, "/", app.FQDN, strings.HasPrefix(app.FQDN, "https"), true)
+	c.JSON(203, gin.H{
+		"text": "ok",
+	})
+}
+
 func (app *booksingApp) userIsAdmin(r *http.Request) bool {
 	user := r.Header.Get("x-auth-user")
 	admin := false

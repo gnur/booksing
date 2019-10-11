@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"math"
 	"strings"
 	"time"
 
+	"firebase.google.com/go/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
@@ -88,30 +90,21 @@ func (app *booksingApp) APIKeyMiddleware() gin.HandlerFunc {
 
 func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		rawCookie, _ := c.Cookie("Authorization")
 		rawHeader := c.GetHeader("Authorization")
-		app.logger.WithField("header", rawHeader).Info("got header")
-		if rawHeader == "" {
-			app.logger.Warning("No auth header provided")
-			c.JSON(403, gin.H{
-				"msg": "access denied",
-			})
-			c.Abort()
-			return
-		}
-		if !strings.HasPrefix(rawHeader, "Bearer ") {
-			app.logger.Warning("Incorrect formatted header")
-			c.JSON(403, gin.H{
-				"msg": "access denied",
-			})
-			c.Abort()
-			return
-		}
+		app.logger.WithFields(logrus.Fields{
+			"cookie": rawCookie,
+			"header": rawHeader,
+		}).Debug("incoming request")
 
-		jwt := strings.TrimPrefix(rawHeader, "Bearer ")
-
-		token, err := app.validateToken(jwt)
+		token, err := app.checkCookieAndHeader(rawHeader, rawCookie)
 		if err != nil {
-			app.logger.WithField("err", err).Error("could not validate provided bearer token")
+			app.logger.WithFields(logrus.Fields{
+				"err":    err,
+				"cookie": rawCookie,
+				"header": rawHeader,
+			}).Error("could not validate provided bearer token")
 			c.JSON(403, gin.H{
 				"msg": "access denied",
 			})
@@ -194,4 +187,34 @@ func (app *booksingApp) CronMiddleware() gin.HandlerFunc {
 		}
 
 	}
+}
+
+func (app *booksingApp) checkCookieAndHeader(h, c string) (*auth.Token, error) {
+	t, err := app.checkCookie(c)
+	if err == nil {
+		return t, nil
+	}
+	t, err = app.checkHeader(h)
+	if err == nil {
+		return t, nil
+	}
+	return nil, errors.New("invalid request")
+}
+
+func (app *booksingApp) checkHeader(rawHeader string) (*auth.Token, error) {
+	if rawHeader == "" {
+		return nil, errors.New("empty header")
+	}
+	if !strings.HasPrefix(rawHeader, "Bearer ") {
+		return nil, errors.New("invalid header")
+	}
+
+	jwt := strings.TrimPrefix(rawHeader, "Bearer ")
+
+	return app.validateToken(jwt)
+}
+
+func (app *booksingApp) checkCookie(c string) (*auth.Token, error) {
+
+	return app.validateToken(c)
 }
