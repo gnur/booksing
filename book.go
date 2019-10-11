@@ -130,7 +130,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	book.Hash = HashBook(book.Author, book.Title)
 
 	if rename {
-		newBookPath := path.Join(baseDir, GetBookPath(book.Author, book.Title))
+		newBookPath := path.Join(baseDir, GetBookPath(book.Author, book.Title)+".epub")
 		if bookpath != newBookPath {
 			baseDir := filepath.Dir(newBookPath)
 			err := os.MkdirAll(baseDir, 0755)
@@ -167,7 +167,7 @@ func GetBookPath(title, author string) string {
 	}
 	parts := strings.Split(author, " ")
 	firstChar := parts[len(parts)-1][0:1]
-	formatted := fmt.Sprintf("%s/%s/%s-%s.epub", firstChar, author, author, title)
+	formatted := fmt.Sprintf("%s/%s/%s-%s", firstChar, author, author, title)
 	formatted = strings.Replace(formatted, " ", "_", -1)
 	formatted = strings.Replace(formatted, "__", "_", -1)
 

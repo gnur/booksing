@@ -41,7 +41,7 @@ type database interface {
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
 	GetBooks(string, int) ([]booksing.Book, error)
-	SetBookConverted(string) error
+	AddLocation(string, string, booksing.Location) error
 
 	GetBookBy(string, string) (*booksing.Book, error)
 

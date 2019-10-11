@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -76,8 +75,9 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	}
 
 	if fileLocation.Type == booksing.FileStorage && fileLocation.File != nil {
+		fName := booksing.GetBookPath(book.Title, book.Author) + "." + index
 		c.Header("Content-Disposition",
-			fmt.Sprintf("attachment; filename=\"%s\"", path.Base(fileLocation.File.Path)))
+			fmt.Sprintf("attachment; filename=\"%s\"", fName))
 		c.File(fileLocation.File.Path)
 		return
 	}
@@ -173,10 +173,29 @@ func (app *booksingApp) convertBook(c *gin.Context) {
 		})
 		return
 	}
-	//TODO: fix this
+	if _, exists := book.Locations["mobi"]; exists {
+		app.logger.WithField("hash", hash).Info("book already exists")
+		c.JSON(200, book)
+		return
+	}
+
+	epub, exists := book.Locations["epub"]
+	if !exists {
+		c.JSON(500, gin.H{
+			"text": "internal server error",
+		})
+		return
+	}
+
+	if epub.Type != booksing.FileStorage {
+		c.JSON(500, gin.H{
+			"text": "internal server error",
+		})
+		return
+	}
 	app.logger.WithField("book", book.Hash).Debug("converting to mobi")
-	mobiPath := strings.Replace(book.Hash, ".epub", ".mobi", 1)
-	cmd := exec.Command("ebook-convert", book.Hash, mobiPath)
+	mobiPath := strings.Replace(epub.File.Path, ".epub", ".mobi", 1)
+	cmd := exec.Command("ebook-convert", epub.File.Path, mobiPath)
 
 	_, err = cmd.CombinedOutput()
 	if err != nil {
@@ -187,7 +206,10 @@ func (app *booksingApp) convertBook(c *gin.Context) {
 		return
 	}
 
-	app.db.SetBookConverted(hash)
+	mobiLoc := epub
+	mobiLoc.File.Path = mobiPath
+
+	app.db.AddLocation(hash, "mobi", mobiLoc)
 	app.logger.WithField("book", book.Hash).Debug("conversion successful")
 	c.JSON(200, book)
 }
@@ -373,18 +395,18 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	//TODO: fix this to use the new indexing
-	if book.HasMobi() {
-		mobiPath := strings.Replace(book.Hash, ".epub", ".mobi", 1)
-		os.Remove(mobiPath)
-	}
-	os.Remove(book.Hash)
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"hash": hash,
-			"err":  err,
-		}).Error("Could not delete book from filesystem")
-		return
+
+	for _, f := range book.Locations {
+		if f.Type == booksing.FileStorage {
+			err := os.Remove(f.File.Path)
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"hash": hash,
+					"err":  err,
+					"path": f.File.Path,
+				}).Error("Could not delete book from filesystem")
+			}
+		}
 	}
 
 	err = app.db.DeleteBook(hash)

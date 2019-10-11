@@ -14,6 +14,7 @@ function cleanup {
     rm -rf workingdir
     log "Emptying database"
     firebase firestore:delete -y -r /envs/dev
+    log "Done. ✅"
 }
 
 trap 'cleanup' EXIT
@@ -44,5 +45,3 @@ yarn serve
 
 
 wait
-log "cleaning up workspace"
-rm -rf ${workdingdir}

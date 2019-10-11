@@ -37,22 +37,57 @@
       >
         <template slot-scope="props">
           <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
-          <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
+          <b-table-column field="title" label="title">
+            <span v-if="longTitle(props.row.title)">
+              <b-tooltip
+                :label="props.row.title"
+                type="is-light"
+                :delay="500"
+                dashed
+              >{{ limitTitleLength(props.row.title) }}</b-tooltip>
+            </span>
+            <span v-else>{{ props.row.title }}</span>
+          </b-table-column>
           <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
           <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
-          <b-table-column field="dl" label="epub">
-            <a :href="'/auth/download?hash=' + props.row.hash + '&index=epub'">download</a>
-          </b-table-column>
-          <b-table-column field="convert" label="mobi" :visible="isAdmin">
-            <a
-              v-if="props.row.hasmobi"
-              :href="'/auth/download?hash=' + props.row.hash + '&index=mobi'"
-            >.mobi</a>
-            <a v-else @click="convertBook(props.row.hash)">convert</a>
-          </b-table-column>
         </template>
         <template slot="detail" slot-scope="props">
-          <span v-html="formatFullMessage(props.row.description)" />
+          <article class="media">
+            <figure class="media-left">
+              <p class="image is-64x64"></p>
+            </figure>
+            <div class="media-content">
+              <div class="content">
+                <p>
+                  <strong>{{ props.row.author }}</strong>
+                  <small>&nbsp;{{ props.row.title }}</small>
+                  <br />
+                  <span v-html="formatFullMessage(props.row.description)" />
+                </p>
+              </div>
+              <nav class="level is-mobile">
+                <div class="level-left">
+                  <template v-for="(v, index) in props.row.locations">
+                    <a
+                      :key="index"
+                      class="level-item"
+                      :href="'/auth/download?hash=' + props.row.hash + '&index=' + index"
+                    >
+                      <span>.{{ index}}</span>
+                    </a>
+                  </template>
+                  <a
+                    v-if="!hasMobi(props.row)"
+                    class="level-item"
+                    @click="convertBook(props.row.hash)"
+                  >
+                    <b-icon icon="refresh"></b-icon>
+                    <span>create .mobi</span>
+                  </a>
+                </div>
+              </nav>
+            </div>
+          </article>
           <br />
         </template>
 
@@ -102,11 +137,26 @@ export default {
 
   methods: {
     formatFullMessage(description) {
+      if (description == "") {
+        return "No description.";
+      }
       return (
         "<span>" +
         description.replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, "$1<br>$2") +
         "</span>"
       );
+    },
+    hasMobi(book) {
+      return "mobi" in book.locations;
+    },
+    longTitle(title) {
+      return title.length > 53;
+    },
+    limitTitleLength(title) {
+      if (title.length > 53) {
+        return title.substring(0, 50) + "...";
+      }
+      return title;
     },
     formatDate(dateStr) {
       var d = new Date(dateStr);
@@ -117,7 +167,7 @@ export default {
       });
     },
     showDetailed(book) {
-      return book.description != "";
+      return true;
     },
     convertBook: function(hash) {
       console.log(hash);
