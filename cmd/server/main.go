@@ -23,7 +23,7 @@ import (
 )
 
 type configuration struct {
-	AllowDeletes  bool
+	AllowDelete   bool
 	AllowOrganize bool
 	BookDir       string `default:"."`
 	ImportDir     string `default:"./import"`
@@ -96,7 +96,7 @@ func main() {
 
 	app := booksingApp{
 		db:            db,
-		allowDeletes:  cfg.AllowDeletes,
+		allowDeletes:  cfg.AllowDelete,
 		allowOrganize: cfg.AllowOrganize,
 		bookDir:       cfg.BookDir,
 		importDir:     cfg.ImportDir,
@@ -105,7 +105,10 @@ func main() {
 		FQDN:          cfg.FQDN,
 		logger:        log.WithField("release", cfg.Version),
 	}
-	go app.refreshLoop()
+
+	if cfg.ImportDir != "" {
+		go app.refreshLoop()
+	}
 
 	r := gin.New()
 	r.Use(Logger(app.logger), gin.Recovery())
@@ -142,7 +145,7 @@ func main() {
 	}
 
 	admin := r.Group("/admin")
-	admin.Use(gin.Recovery())
+	admin.Use(gin.Recovery(), app.BearerTokenMiddleware())
 	{
 		admin.GET("downloads.json", app.getDownloads)
 		admin.GET("refreshes.json", app.getRefreshes)
@@ -151,7 +154,7 @@ func main() {
 	}
 
 	api := r.Group("/api")
-	api.Use(gin.Recovery())
+	api.Use(gin.Recovery(), app.APIKeyMiddleware())
 	{
 		api.GET("exists/:author/:title", app.bookPresent)
 		api.PUT("book", app.addBook)

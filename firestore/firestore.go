@@ -389,7 +389,10 @@ func (db *FireDB) GetAPIKey(key string) (*booksing.Apikey, error) {
 	ctx := context.Background()
 	var a booksing.Apikey
 	snap, err := db.c.Collection("apikeys").Doc(key).Get(ctx)
-	if err != nil {
+
+	if grpc.Code(err) == codes.NotFound {
+		return nil, booksing.ErrNotFound
+	} else if err != nil {
 		return nil, err
 	}
 	err = snap.DataTo(&a)

@@ -43,8 +43,8 @@ type Book struct {
 // Location represents a storage location of a book
 type Location struct {
 	Type StorageLocation
-	S3   *S3Location
-	File *FileLocation
+	S3   *S3Location   `json:",omitempty"`
+	File *FileLocation `json:",omitempty"`
 }
 
 type S3Location struct {

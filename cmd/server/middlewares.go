@@ -70,7 +70,13 @@ func (app *booksingApp) APIKeyMiddleware() gin.HandlerFunc {
 			return
 		}
 		key, err := app.db.GetAPIKey(apikey)
-		if err != nil {
+		if err == booksing.ErrNotFound {
+			c.JSON(403, gin.H{
+				"msg": "access denied",
+			})
+			c.Abort()
+			return
+		} else if err != nil {
 			c.JSON(500, gin.H{
 				"msg": err.Error(),
 			})

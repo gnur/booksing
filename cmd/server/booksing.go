@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,11 +49,12 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		}).Error("could not find book")
 		return
 	}
+	user := c.MustGet("id")
+	username := user.(*booksing.User).Username
 
 	ip := c.ClientIP()
 	dl := booksing.Download{
-		//			User:      r.Header.Get("x-auth-user"),
-		User:      "unknown",
+		User:      username,
 		IP:        ip,
 		Book:      book.Hash,
 		Timestamp: time.Now(),
@@ -94,11 +96,18 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 }
 
 func (app *booksingApp) bookPresent(c *gin.Context) {
-	author := c.Param("author")
-	title := c.Param("title")
-	title = booksing.Fix(title, true, false)
+	author, _ := url.QueryUnescape(c.Param("author"))
+	title, _ := url.QueryUnescape(c.Param("title"))
+
 	author = booksing.Fix(author, true, true)
+	title = booksing.Fix(title, true, false)
+
 	hash := booksing.HashBook(author, title)
+	app.logger.WithFields(logrus.Fields{
+		"author": author,
+		"title":  title,
+		"hash":   hash,
+	}).Info("checking if book exists")
 
 	_, err := app.db.GetBookBy("Hash", hash)
 	found := err == nil
@@ -256,6 +265,7 @@ func (app *booksingApp) convertBook(c *gin.Context) {
 }
 
 func (app *booksingApp) getBooks(c *gin.Context) {
+
 	var resp bookResponse
 	var limit int
 	numString := c.DefaultQuery("results", "100")

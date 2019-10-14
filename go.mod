@@ -8,6 +8,7 @@ require (
 	github.com/antzucaro/matchr v0.0.0-20180616170659-cbc221335f3c
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/beevik/etree v1.1.0
+	github.com/cheggaaa/pb/v3 v3.0.1
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/gin-contrib/static v0.0.0-20190913125243-df30d4057ba1
 	github.com/gin-gonic/gin v1.4.0
