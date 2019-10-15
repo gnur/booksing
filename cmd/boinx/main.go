@@ -156,6 +156,10 @@ func (cfg *Configuration) Import() {
 			if end > total {
 				end = total
 			}
+			log.WithFields(log.Fields{
+				"start": start,
+				"end":   end,
+			}).Info("Running batch")
 			batch := booksToAdd[start:end]
 			cfg.addBooksToBooksing(batch)
 			if end == total {

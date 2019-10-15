@@ -3,6 +3,10 @@
 workingdir=$(mktemp -d)
 mkdir "${workingdir}/import"
 
+if [[ -f ~/.global-env ]]; then
+    source ~/.global-env
+fi
+
 function log {
     echo "> $(date +%T) $*"
 }

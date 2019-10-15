@@ -12,3 +12,5 @@ testdata/odd-collection/*
 booksing-creds.json
 .firebaserc
 firebase.json
+boinx
+server
