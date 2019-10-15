@@ -49,6 +49,25 @@ func (db *FireDB) AddBook(b *booksing.Book) error {
 	return err
 }
 
+func (db *FireDB) AddBooks(books []booksing.Book) error {
+	ctx := context.Background()
+
+	batch := db.client.Batch()
+	for _, b := range books {
+
+		_, err := db.GetBookBy("Hash", b.Hash)
+		if err == nil {
+			// skip this book, it exists
+			continue
+		}
+		ref := db.c.Collection("books").Doc(b.Hash)
+		batch = batch.Set(ref, b)
+	}
+	_, err := batch.Commit(ctx)
+
+	return err
+}
+
 func (db *FireDB) GetBook(q string) (*booksing.Book, error) {
 	results, err := db.filterBooksBQL(q, 10)
 	if err != nil {

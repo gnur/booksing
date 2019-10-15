@@ -412,16 +412,8 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 	}
 }
 
-type bookInput struct {
-	Title       string
-	Author      string
-	Language    string
-	Description string
-	Locations   map[string]booksing.Location
-}
-
 func (app *booksingApp) addBook(c *gin.Context) {
-	var b bookInput
+	var b booksing.BookInput
 	if err := c.ShouldBindJSON(&b); err != nil {
 		c.JSON(400, gin.H{
 			"text": "invalid input",
@@ -429,17 +421,7 @@ func (app *booksingApp) addBook(c *gin.Context) {
 		return
 	}
 
-	var book booksing.Book
-	book.Author = booksing.Fix(b.Author, true, true)
-	book.Title = booksing.Fix(b.Title, true, false)
-	book.Language = booksing.FixLang(b.Language)
-	book.Description = b.Description
-	book.Locations = b.Locations
-
-	searchWords := book.Title + " " + book.Author
-	book.MetaphoneKeys = booksing.GetMetaphoneKeys(searchWords)
-	book.SearchWords = booksing.GetLowercasedSlice(searchWords)
-	book.Hash = booksing.HashBook(book.Author, book.Title)
+	book := b.ToBook()
 
 	book.Added = time.Now().In(app.timezone)
 
@@ -455,13 +437,35 @@ func (app *booksingApp) addBook(c *gin.Context) {
 }
 
 func (app *booksingApp) addBooks(c *gin.Context) {
-	var b []booksing.Book
-	if err := c.ShouldBindJSON(&b); err != nil {
+	var inBooks []booksing.BookInput
+	if err := c.ShouldBindJSON(&inBooks); err != nil {
 		c.JSON(400, gin.H{
 			"text": "invalid input",
 		})
 		return
 	}
+
+	var books []booksing.Book
+
+	var bo booksing.Book
+
+	for _, b := range inBooks {
+		bo = b.ToBook()
+		bo.Added = time.Now().In(app.timezone)
+		books = append(books, bo)
+	}
+
+	err := app.db.AddBooks(books)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"text": err,
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"ok": "yes",
+	})
+
 }
 
 type deleteRequest struct {

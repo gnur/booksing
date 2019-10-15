@@ -38,6 +38,8 @@ const (
 
 type database interface {
 	AddBook(*booksing.Book) error
+	AddBooks([]booksing.Book) error
+
 	BookCount() int
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error

@@ -40,6 +40,31 @@ type Book struct {
 	Locations     map[string]Location `json:"locations"`
 }
 
+type BookInput struct {
+	Title       string
+	Author      string
+	Language    string
+	Description string
+	Locations   map[string]Location
+}
+
+func (b *BookInput) ToBook() Book {
+	var book Book
+	book.Author = Fix(b.Author, true, true)
+	book.Title = Fix(b.Title, true, false)
+	book.Language = FixLang(b.Language)
+	book.Description = b.Description
+	book.Locations = b.Locations
+
+	searchWords := book.Title + " " + book.Author
+	book.MetaphoneKeys = GetMetaphoneKeys(searchWords)
+	book.SearchWords = GetLowercasedSlice(searchWords)
+	book.Hash = HashBook(book.Author, book.Title)
+
+	return book
+
+}
+
 // Location represents a storage location of a book
 type Location struct {
 	Type StorageLocation
