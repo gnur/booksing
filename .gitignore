@@ -12,5 +12,7 @@ testdata/odd-collection/*
 booksing-creds.json
 .firebaserc
 firebase.json
-boinx
-server
+web/src/firebase-config.js
+env_vars.yaml
+cmd/server/dist
+*.bak

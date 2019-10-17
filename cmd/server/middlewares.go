@@ -173,9 +173,7 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("id", &booksing.User{
-			Username: username,
-		})
+		c.Set("id", &u)
 
 	}
 }

@@ -34,7 +34,7 @@ log "Creating temp workspace in ${workingdir}"
 cp -a testdata/import/gutenberg/* $workingdir/import/
 
 export BOOKSING_LOGLEVEL=debug
-export BOOKSING_DATABASE="firestore://booksing-erwin-land"
+export BOOKSING_DATABASE="firestore://booksing"
 export GOOGLE_APPLICATION_CREDENTIALS="booksing-creds.json"
 export BOOKSING_IMPORTDIR="${workingdir}/import"
 export BOOKSING_BOOKDIR="${workingdir}/"

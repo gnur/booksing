@@ -25,15 +25,17 @@ var accessKeyID = os.Getenv("ACCESS_KEY_ID")
 var secretAccessKey = os.Getenv("SECRET_ACCESS_KEY")
 
 var mc *minio.Client
+var sem = make(chan bool, 10)
 
 // Configuration bla
 type Configuration struct {
-	Bucket       string `help:"What bucket is used to store the lambda code zips?"`
-	Host         string `help:"Hostname of S3 compatible API"`
-	ImportDir    string `help:"Directory to load books from"`
-	BooksingHost string `help:"FQDN of the main booksing server"`
-	APIKey       string `help:"api key for booksing"`
-	Debug        bool   `help:"Enable debug mode?"`
+	Bucket        string `help:"What bucket is used to store the lambda code zips?"`
+	Host          string `help:"Hostname of S3 compatible API"`
+	ImportDir     string `help:"Directory to load books from"`
+	BooksingHost  string `help:"FQDN of the main booksing server"`
+	APIKey        string `help:"api key for booksing"`
+	CheckBooksing bool   `help:"check booksing if book is present?"`
+	Debug         bool   `help:"Enable debug mode?"`
 }
 
 func newConfig() *Configuration {
@@ -83,6 +85,12 @@ func (cfg *Configuration) Run() error {
 	return nil
 }
 
+type uploadResult struct {
+	success bool
+	b       booksing.Book
+	key     string
+}
+
 // Import indexes the directory, uploads to S3 and announces it to booksing
 func (cfg *Configuration) Import() {
 	matches, err := zglob.Glob(filepath.Join(cfg.ImportDir, "/**/*.epub"))
@@ -93,6 +101,12 @@ func (cfg *Configuration) Import() {
 	if len(matches) == 0 {
 		log.Info("finished refresh of booklist, no new books found")
 		return
+	}
+	if mc == nil {
+		mc, err = minio.New(cfg.Host, accessKeyID, secretAccessKey, true)
+		if err != nil {
+			log.WithField("err", err).Fatal("creating minio client failed, exiting hard")
+		}
 	}
 
 	var bar *pb.ProgressBar
@@ -109,6 +123,9 @@ func (cfg *Configuration) Import() {
 	}
 
 	var booksToAdd []booksing.BookInput
+	var uploads = 0
+
+	resultQ := make(chan uploadResult)
 
 	for _, bookPath := range matches {
 		if !cfg.Debug {
@@ -120,28 +137,53 @@ func (cfg *Configuration) Import() {
 			continue
 		}
 
-		found, err := cfg.bookInBooksing(book.Author, book.Title)
-		if err != nil {
+		if cfg.CheckBooksing {
+			found, err := cfg.bookInBooksing(book.Author, book.Title)
+			if err != nil {
+				result.Errors++
+				continue
+			}
+			if found {
+				result.Duplicates++
+				continue
+			}
+			// book is valid, and not in booksing
+		}
+
+		uploads++
+
+		go cfg.UploadToS3(bookPath, book, resultQ)
+	}
+
+	if !cfg.Debug {
+		bar.Finish()
+	}
+	log.Info("indexed all books")
+
+	if uploads > 0 {
+		log.WithField("uploads", uploads).Info("Starting uploads to S3")
+	}
+	//TODO make sure we make a new bar here
+	if !cfg.Debug && uploads > 0 {
+		bar = pb.StartNew(uploads)
+	}
+	for i := 0; i < uploads; i++ {
+
+		res := <-resultQ
+
+		if !res.success {
 			result.Errors++
 			continue
 		}
-		if found {
-			result.Duplicates++
-			continue
-		}
-		// book is valid, and not in booksing
 
-		key, err := cfg.UploadToS3(bookPath, book)
-		if err != nil {
-			result.Errors++
-			continue
-		}
-
-		booksToAdd = append(booksToAdd, cfg.getBooksingInput(book, key))
+		booksToAdd = append(booksToAdd, cfg.getBooksingInput(&res.b, res.key))
 
 		result.Uploaded++
+		if !cfg.Debug {
+			bar.Increment()
+		}
 	}
-	if !cfg.Debug {
+	if !cfg.Debug && uploads > 0 {
 		bar.Finish()
 	}
 
@@ -216,14 +258,11 @@ func (cfg *Configuration) bookInBooksing(author, title string) (bool, error) {
 	return true, errors.New("found not found in response")
 }
 
-func (cfg *Configuration) UploadToS3(bookpath string, book *booksing.Book) (string, error) {
+func (cfg *Configuration) UploadToS3(bookpath string, book *booksing.Book, q chan uploadResult) {
 	var err error
-	if mc == nil {
-		mc, err = minio.New(cfg.Host, accessKeyID, secretAccessKey, true)
-		if err != nil {
-			log.WithField("err", err).Fatal("creating minio client failed, exiting hard")
-		}
-	}
+
+	// acquire from the semaphore to limit concurrency
+	sem <- true
 
 	key := booksing.GetBookPath(book.Title, book.Author) + ".epub"
 	_, err = mc.FPutObject(cfg.Bucket, key, bookpath, minio.PutObjectOptions{})
@@ -231,7 +270,12 @@ func (cfg *Configuration) UploadToS3(bookpath string, book *booksing.Book) (stri
 		log.WithField("err", err).Error("could not upload")
 	}
 
-	return key, err
+	q <- uploadResult{
+		key:     key,
+		b:       *book,
+		success: err == nil,
+	}
+	<-sem
 }
 
 func (cfg *Configuration) getBooksingInput(b *booksing.Book, key string) booksing.BookInput {

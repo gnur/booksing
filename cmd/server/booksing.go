@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -125,10 +124,10 @@ func (app *booksingApp) getBook(c *gin.Context) {
 }
 
 func (app *booksingApp) getUser(c *gin.Context) {
-	//admin := app.userIsAdmin(r)
-	admin := true
+	id := c.MustGet("id")
+	user := id.(*booksing.User)
 	c.JSON(200, gin.H{
-		"admin": admin,
+		"admin": user.IsAdmin,
 	})
 }
 
@@ -163,26 +162,10 @@ func (app *booksingApp) checkToken(c *gin.Context) {
 	})
 }
 
-func (app *booksingApp) userIsAdmin(r *http.Request) bool {
-	user := r.Header.Get("x-auth-user")
-	admin := false
-	if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
-		admin = true
-	}
-	app.logger.WithFields(logrus.Fields{
-		"x-auth-user": user,
-		"admin":       admin,
-		"env-user":    os.Getenv("ADMIN_USER"),
-		"anon-admin":  os.Getenv("ANONYMOUS_ADMIN"),
-	}).Info("getting user admin")
-	return admin
-
-}
-
 func (app *booksingApp) getDownloads(c *gin.Context) {
-	//admin := app.userIsAdmin(r)
-	admin := true
-	if !admin {
+	id := c.MustGet("id")
+	user := id.(*booksing.User)
+	if !user.IsAdmin {
 		c.JSON(403, gin.H{
 			"text": "access denied",
 		})
@@ -193,9 +176,9 @@ func (app *booksingApp) getDownloads(c *gin.Context) {
 }
 
 func (app *booksingApp) getRefreshes(c *gin.Context) {
-	//admin := app.userIsAdmin(r)
-	admin := true
-	if !admin {
+	id := c.MustGet("id")
+	user := id.(*booksing.User)
+	if !user.IsAdmin {
 		c.JSON(403, gin.H{
 			"text": "access denied",
 		})
@@ -473,9 +456,9 @@ type deleteRequest struct {
 }
 
 func (app *booksingApp) deleteBook(c *gin.Context) {
-	//admin := app.userIsAdmin(r)
-	admin := true
-	if !admin {
+	id := c.MustGet("id")
+	user := id.(*booksing.User)
+	if !user.IsAdmin {
 		return
 	}
 	var req deleteRequest

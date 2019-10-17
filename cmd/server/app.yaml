@@ -1,0 +1,22 @@
+runtime: go112
+
+includes:
+  - env_vars.yaml
+
+handlers:
+  - url: /js/.*
+    static_dir: dist/js
+    secure: always
+  - url: /css/.*
+    static_dir: dist/css
+    secure: always
+  - url: /fonts/.*
+    static_dir: dist/fonts
+    secure: always
+  - url: /img/.*
+    static_dir: dist/img
+    secure: always
+
+  - url: /.*
+    script: auto
+    secure: always

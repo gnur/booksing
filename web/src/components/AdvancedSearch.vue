@@ -20,6 +20,7 @@
         <span>Delete selected ({{ checkedRows.length }})</span>
       </button>
       <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">admin</router-link>
+      <router-link v-if="isAdmin" :to="{ name: 'dashboard' }" class="button field is-info">dashboard</router-link>
     </nav>
 
     <div class="section">
