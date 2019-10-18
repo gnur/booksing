@@ -357,11 +357,12 @@ func (cfg *Configuration) addBooksToBooksing(batch []booksing.BookInput) error {
 	req.Header.Add("x-api-key", cfg.APIKey)
 	req.Header.Add("Contenty-Type", "application/json")
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
+		log.WithField("err", err).Fatal("could not contact")
+	} else if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == 403 {
 			log.Fatal("access denied")
 		}
-		return err
 	}
 	resp.Body.Close()
 

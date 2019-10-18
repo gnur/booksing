@@ -20,6 +20,8 @@ type FireDB struct {
 	c      *firestore.DocumentRef
 }
 
+type statHolder map[string]int
+
 // New returns a new firestore client
 func New(projectID, env string) (*FireDB, error) {
 	ctx := context.Background()
@@ -31,10 +33,23 @@ func New(projectID, env string) (*FireDB, error) {
 		client: client,
 		c:      client.Collection("envs").Doc(env),
 	}
+	//create stats holder with new field that no one uses
+	db.initStats()
+
 	return &db, nil
 }
 func (db *FireDB) Close() {
 	db.client.Close()
+}
+
+func (db *FireDB) initStats() {
+	ctx := context.Background()
+	a := make(statHolder)
+	a["blaat"] = 1
+	db.c.Collection("stats").
+		Doc("stats").
+		Set(ctx, a, firestore.Merge(firestore.FieldPath{"blaat"}))
+
 }
 
 func (db *FireDB) AddBook(b *booksing.Book) error {
@@ -45,6 +60,10 @@ func (db *FireDB) AddBook(b *booksing.Book) error {
 		return booksing.ErrDuplicate
 	}
 	_, err = db.c.Collection("books").Doc(b.Hash).Set(ctx, b)
+
+	if err == nil {
+		db.incStat("totalbooks", 1)
+	}
 
 	return err
 }
@@ -63,7 +82,9 @@ func (db *FireDB) AddBooks(books []booksing.Book) error {
 		ref := db.c.Collection("books").Doc(b.Hash)
 		batch = batch.Set(ref, b)
 	}
-	_, err := batch.Commit(ctx)
+	results, err := batch.Commit(ctx)
+
+	db.incStat("totalbooks", len(results))
 
 	return err
 }
@@ -300,7 +321,38 @@ func (db *FireDB) GetDownloads(limit int) ([]booksing.Download, error) {
 	return dls, nil
 }
 func (db *FireDB) BookCount() int {
-	return 0
+	v, _ := db.getStat("totalbooks")
+	return v
+}
+
+func (db *FireDB) getStat(field string) (int, error) {
+	ctx := context.Background()
+	snap, err := db.c.Collection("stats").Doc("stats").Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	var holder statHolder
+
+	err = snap.DataTo(&holder)
+	if err != nil {
+		return 0, err
+	}
+
+	if val, exists := holder[field]; exists {
+		return val, nil
+	}
+
+	return 0, errors.New("field does not exist")
+}
+
+func (db *FireDB) incStat(field string, amount int) error {
+	ctx := context.Background()
+	co := db.c.Collection("stats").Doc("stats")
+	_, err := co.Update(ctx, []firestore.Update{
+		{Path: field, Value: firestore.Increment(amount)},
+	})
+	return err
 }
 
 func (db *FireDB) AddRefresh(rr booksing.RefreshResult) error {

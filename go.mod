@@ -1,7 +1,7 @@
 module github.com/gnur/booksing
 
 require (
-	cloud.google.com/go v0.43.0
+	cloud.google.com/go/firestore v1.0.0
 	firebase.google.com/go v3.9.0+incompatible
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/Sereal/Sereal v0.0.0-20190618215532-0b8ac451a863 // indirect
@@ -21,7 +21,6 @@ require (
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-zglob v0.0.1
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -32,9 +31,8 @@ require (
 	go.etcd.io/bbolt v1.3.2 // indirect
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
 	golang.org/x/text v0.3.2
-	golang.org/x/tools v0.0.0-20190628153133-6cdbf07be9d0
-	google.golang.org/api v0.7.0
+	golang.org/x/tools v0.0.0-20190911174233-4f2ddba30aff
+	google.golang.org/api v0.9.0
 	google.golang.org/grpc v1.21.1
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
 )

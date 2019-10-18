@@ -17,5 +17,5 @@ go build -o boinx ./cmd/boinx/ || exit 1
     -booksing-host "$BOOKSING_HOST" \
     -bucket "booksing" \
     -host "$S3_HOST" \
-    -import-dir "testdata" \
+    -import-dir "testdata/import" \
     -api-key "$BOOKSING_API_KEY"
