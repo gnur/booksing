@@ -141,16 +141,16 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		return nil, err
 	}
 
-	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
-	_, err = os.Stat(mobiPath)
-	if !os.IsNotExist(err) {
-		book.Locations["mobi"] = Location{
-			Type: FileStorage,
-			File: &FileLocation{
-				Path: mobiPath,
-			},
-		}
-	}
+	//	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
+	//	_, err = os.Stat(mobiPath)
+	//	if !os.IsNotExist(err) {
+	//		book.Locations["mobi"] = Location{
+	//			Type: FileStorage,
+	//			File: &FileLocation{
+	//				Path: mobiPath,
+	//			},
+	//		}
+	//	}
 
 	fp := bookpath
 

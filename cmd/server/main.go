@@ -159,6 +159,7 @@ func main() {
 		api.GET("exists/:author/:title", app.bookPresent)
 		api.PUT("book", app.addBook)
 		api.PUT("books", app.addBooks)
+		api.PUT("book/:hash/:type", app.addLocation)
 	}
 
 	log.Info("booksing is now running")

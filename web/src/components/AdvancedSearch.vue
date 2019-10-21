@@ -1,26 +1,51 @@
 <template>
   <div id="app" class="container">
     <nav class="level">
-      <b-field>
-        <b-input
-          placeholder="Search..."
-          type="search"
-          v-model="searchstring"
-          id="search"
-          size="is-medium"
-          icon="magnify"
-        ></b-input>
-      </b-field>
-      <button
-        class="button field is-danger"
-        @click="deleteSelectedBooks"
-        v-if="isAdmin && checkedRows.length > 0"
-      >
-        <b-icon icon="delete"></b-icon>
-        <span>Delete selected ({{ checkedRows.length }})</span>
-      </button>
-      <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">admin</router-link>
-      <router-link v-if="isAdmin" :to="{ name: 'dashboard' }" class="button field is-info">dashboard</router-link>
+      <div class="level-item">
+        <p class="subtitle is-5">
+          <strong>{{ total }}</strong> books
+        </p>
+      </div>
+      <div class="level-item">
+        <b-field>
+          <b-input
+            placeholder="Search..."
+            type="search"
+            v-model="searchstring"
+            expanded
+            id="search"
+            size="is-medium"
+            icon="magnify"
+          ></b-input>
+          <p class="control">
+            <button @click="getBooks" class="button is-medium is-primary">Search</button>
+          </p>
+        </b-field>
+      </div>
+      <div class="level-item">
+        <button
+          class="button field is-medium is-danger"
+          @click="deleteSelectedBooks"
+          v-if="isAdmin && checkedRows.length > 0"
+        >
+          <b-icon icon="delete"></b-icon>
+          <span>Delete selected ({{ checkedRows.length }})</span>
+        </button>
+      </div>
+      <div class="level-item">
+        <router-link
+          v-if="isAdmin"
+          :to="{ name: 'admin' }"
+          class="button field is-medium is-info"
+        >admin</router-link>
+      </div>
+      <div class="level-item">
+        <router-link
+          v-if="isAdmin"
+          :to="{ name: 'dashboard' }"
+          class="button field is-medium is-info"
+        >dashboard</router-link>
+      </div>
     </nav>
 
     <div class="section">
@@ -68,6 +93,7 @@
               </div>
               <nav class="level is-mobile">
                 <div class="level-left">
+                  <span class="level-item">Download:</span>
                   <template v-for="(v, index) in props.row.locations">
                     <a
                       :key="index"
@@ -164,11 +190,17 @@ export default {
     },
     formatDate(dateStr) {
       var d = new Date(dateStr);
-      return d.toLocaleDateString("nl-NL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
+      var input = new Date(dateStr);
+      var today = new Date();
+      if (d.setHours(0, 0, 0, 0) == today.setHours(0, 0, 0, 0)) {
+        return input.toLocaleTimeString("nl-NL", {});
+      } else {
+        return input.toLocaleDateString("nl-NL", {
+          year: "numeric",
+          month: "long",
+          day: "numeric"
+        });
+      }
     },
     showDetailed(book) {
       return true;

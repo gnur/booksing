@@ -419,6 +419,45 @@ func (app *booksingApp) addBook(c *gin.Context) {
 
 }
 
+func (app *booksingApp) addLocation(c *gin.Context) {
+	hash := c.Param("hash")
+	fileType := c.Param("type")
+	var b booksing.Location
+
+	if err := c.ShouldBindJSON(&b); err != nil {
+		c.JSON(400, gin.H{
+			"text": "invalid input",
+		})
+		return
+	}
+
+	if b.Type == booksing.FileStorage && b.File == nil {
+		c.JSON(400, gin.H{
+			"text": "invalid input",
+		})
+		return
+	}
+	if b.Type == booksing.S3Storage && b.S3 == nil {
+		c.JSON(400, gin.H{
+			"text": "invalid input",
+		})
+		return
+	}
+
+	err := app.db.AddLocation(hash, fileType, b)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"text": err,
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"text": "ok",
+	})
+
+}
+
 func (app *booksingApp) addBooks(c *gin.Context) {
 	var inBooks []booksing.BookInput
 	if err := c.ShouldBindJSON(&inBooks); err != nil {
