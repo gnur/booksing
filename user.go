@@ -6,9 +6,10 @@ import (
 
 // User demo
 type User struct {
-	Username string
-	IsAdmin  bool
-	Created  time.Time
-	LastSeen time.Time
-	APIKeys  []Apikey
+	Username  string
+	IsAdmin   bool
+	IsAllowed bool
+	Created   time.Time
+	LastSeen  time.Time
+	APIKeys   []Apikey
 }

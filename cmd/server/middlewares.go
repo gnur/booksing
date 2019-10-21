@@ -172,6 +172,13 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		if !u.IsAllowed {
+			c.JSON(430, gin.H{
+				"msg": "access denied",
+			})
+			c.Abort()
+			return
+		}
 
 		c.Set("id", &u)
 

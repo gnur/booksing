@@ -248,6 +248,9 @@ export default {
             if (error.response && error.response.status == 403) {
               router.push({ name: "login" });
             }
+            if (error.response && error.response.status == 430) {
+              vm.showErrorAlert("Please contact the site owner to gain access");
+            }
             console.log(error);
           });
       },
@@ -255,6 +258,13 @@ export default {
       // user to stop typing.
       500
     ),
+    showErrorAlert: function(msg) {
+      this.$toast.open({
+        duration: 50000,
+        message: msg,
+        type: "is-danger"
+      });
+    },
     deleteSelectedBooks: function() {
       var vm = this;
       vm.isLoading = true;
