@@ -18,6 +18,7 @@ type booksingApp struct {
 	authClient    *auth.Client
 	timezone      *time.Location
 	FQDN          string
+	adminUser     string
 }
 
 type bookResponse struct {

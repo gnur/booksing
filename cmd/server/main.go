@@ -25,6 +25,7 @@ import (
 type configuration struct {
 	AllowDelete   bool
 	AllowOrganize bool
+	AdminUser     string `default:""`
 	BookDir       string `default:"."`
 	ImportDir     string `default:"./import"`
 	Database      string `default:"file://booksing.db"`
@@ -101,6 +102,7 @@ func main() {
 		bookDir:       cfg.BookDir,
 		importDir:     cfg.ImportDir,
 		timezone:      tz,
+		adminUser:     cfg.AdminUser,
 		authClient:    client,
 		FQDN:          cfg.FQDN,
 		logger:        log.WithField("release", cfg.Version),

@@ -141,9 +141,11 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 		u, err := app.db.GetUser(username)
 		if err == booksing.ErrNotFound {
 			err = app.db.SaveUser(&booksing.User{
-				Username: username,
-				Created:  time.Now(),
-				LastSeen: time.Now(),
+				Username:  username,
+				IsAdmin:   username == app.adminUser,
+				IsAllowed: username == app.adminUser,
+				Created:   time.Now(),
+				LastSeen:  time.Now(),
 			})
 			if err != nil {
 				app.logger.WithField("err", err).Error("could not save new user")
