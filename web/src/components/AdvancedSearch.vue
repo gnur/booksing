@@ -3,7 +3,17 @@
     <nav class="level">
       <div class="level-item">
         <p class="subtitle is-5">
-          <strong>{{ total }}</strong> books
+          <a v-if="!statsLoading" @click="refreshCount">
+            <b-tooltip
+              label="total books available for searching"
+              type="is-light"
+              :delay="500"
+              dashed
+            >
+              <strong>{{ total }}</strong>&nbsp; books
+            </b-tooltip>
+          </a>
+          <strong v-if="statsLoading">Loading..</strong>
         </p>
       </div>
       <div class="level-item">
@@ -21,6 +31,11 @@
             <button @click="getBooks" class="button is-medium is-primary">Search</button>
           </p>
         </b-field>
+      </div>
+      <div v-if="searched" class="level-item">
+        <p class="subtitle is-5">
+          <strong>{{ resultCount }}</strong> search results
+        </p>
       </div>
       <div class="level-item">
         <button
@@ -59,7 +74,7 @@
         :checked-rows.sync="checkedRows"
         :checkable="isAdmin"
         :loading="isLoading"
-        per-page="50"
+        per-page="25"
       >
         <template slot-scope="props">
           <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
@@ -146,8 +161,11 @@ export default {
       books: [],
       total: 0,
       checkedRows: [],
+      resultCount: 0,
       isLoading: true,
+      statsLoading: true,
       isAdmin: false,
+      searched: false,
       refreshButtonText: "refresh"
     };
   },
@@ -161,6 +179,7 @@ export default {
   mounted: function() {
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + this.$store.getters.token;
+    this.refreshCount();
     this.getBooks();
     this.getUser();
   },
@@ -221,6 +240,19 @@ export default {
           console.log(error);
         });
     },
+    refreshCount: function() {
+      var vm = this;
+      vm.statsLoading = true;
+      axios
+        .get("/auth/stats")
+        .then(function(response) {
+          vm.total = response.data.total;
+          vm.statsLoading = false;
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+    },
     getBooks: lodash.debounce(
       function() {
         var vm = this;
@@ -230,7 +262,7 @@ export default {
           .get(uri, {
             params: {
               filter: this.searchstring,
-              results: 500
+              results: 100
             }
           })
           .then(function(response) {
@@ -238,10 +270,11 @@ export default {
             if (vm.books === null) {
               vm.books = [];
             }
-            vm.total = response.data.total;
-            document.title = `booksing - ${vm.total} books available for searching`;
+            vm.searched = vm.searchstring != "";
+            document.title = `booksing`;
             vm.isLoading = false;
             vm.checkedRows = [];
+            vm.resultCount = vm.books.length;
           })
           .catch(function(error) {
             vm.statusMessage = "Something went wrong";

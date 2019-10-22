@@ -123,6 +123,13 @@ func (app *booksingApp) getBook(c *gin.Context) {
 	c.JSON(200, book)
 }
 
+func (app *booksingApp) getStats(c *gin.Context) {
+	count := app.db.BookCount()
+	c.JSON(200, gin.H{
+		"total": count,
+	})
+}
+
 func (app *booksingApp) getUser(c *gin.Context) {
 	id := c.MustGet("id")
 	user := id.(*booksing.User)

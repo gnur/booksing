@@ -136,6 +136,7 @@ func main() {
 	{
 		auth.GET("search", app.getBooks)
 		auth.GET("user.json", app.getUser)
+		auth.GET("stats", app.getStats)
 
 		auth.GET("/apikey", app.getAPIKeys)
 		auth.POST("/apikey", app.addAPIKey)
