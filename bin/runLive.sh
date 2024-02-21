@@ -22,8 +22,6 @@ trap 'cleanup' EXIT
 log "Creating temp workspace in ${workingdir}"
 cp -a testdata/import $workingdir/import/
 
-source .env
-
 export BOOKSING_LOGLEVEL=debug
 export BOOKSING_ADMINUSER='unknown'
 export BOOKSING_DATABASEDIR="${workingdir}/db"

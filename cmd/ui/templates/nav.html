@@ -52,6 +52,11 @@
         type="search"
         placeholder="Search"
         aria-label="Search"
+        hx-get="/"
+        hx-trigger="keyup changed delay:400ms"
+        hx-target=".container"
+        hx-indicator=".container"
+        hx-push-url="true"
         value="{{.Q}}"
       />
       <button class="btn btn-primary" id="searchbutton" type="submit">
