@@ -14,7 +14,6 @@ import (
 
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
-	"gorm.io/gorm"
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
@@ -32,20 +31,19 @@ const (
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	gorm.Model
-	Hash        string `gorm:"uniqueIndex"`
+	Hash        string
 	Title       string
-	Author      string `gorm:"index"`
-	Language    string `gorm:"index"`
+	Author      string
+	Language    string
 	Description string
-	Added       time.Time `gorm:"index"`
+	Added       time.Time
 	Path        string
-	Size        int64 `gorm:"index"`
+	Size        int64
 	HasCover    bool
 	CoverPath   string
 	Publisher   string
 	ISBN        string
-	Series      string `gorm:"index"`
+	Series      string
 	PublishDate time.Time
 	SeriesIndex float64
 }

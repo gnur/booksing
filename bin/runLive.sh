@@ -11,13 +11,21 @@ function log {
 }
 
 function cleanup {
+    log "Killing background process"
+    killall background
     log "Removing old workdir"
     rm -rf "$workingdir"
+    log "Stopping docker container"
+    docker stop meili
     log "Done. ✅"
 }
 
 trap 'cleanup' EXIT
 
+log "Starting temp meilisearch docker container"
+docker run --name "meili" -d --rm \
+  -p 7700:7700 \
+  getmeili/meilisearch:v1.6
 
 log "Creating temp workspace in ${workingdir}"
 cp -a testdata/import $workingdir/import/
@@ -36,6 +44,10 @@ export BOOKSING_MQTTCLIENTID="booksing"
 export BOOKSING_BINDADDRESS="localhost:7133"
 export BOOKSING_EVENTSPORT="localhost:8821"
 export BOOKSING_ACCEPTEDLANGUAGES="nl,en"
+
+cd web
+bun run dev &
+cd -
 
 
 air

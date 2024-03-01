@@ -4,24 +4,20 @@ import (
 	"time"
 
 	"github.com/gnur/booksing"
-	"github.com/gnur/slev"
 	"github.com/sirupsen/logrus"
 )
 
 // booksingApp holds all relevant global stuff for the booksing server
 type booksingApp struct {
-	db         database
-	canConvert bool
-	bookDir    string
-	slev       *slev.Slev
-	//importDir is very important
-	importDir   string
-	logger      *logrus.Entry
-	timezone    *time.Location
-	adminUser   string
-	cfg         configuration
-	state       string
-	recentCache *booksing.SearchResult
+	db        database
+	searchDB  searchDB
+	bookDir   string
+	importDir string
+	logger    *logrus.Entry
+	timezone  *time.Location
+	adminUser string
+	cfg       configuration
+	state     string
 }
 
 type database interface {
@@ -33,15 +29,14 @@ type database interface {
 
 	GetUsers() ([]booksing.User, error)
 
-	GetBookCount() int
-
-	HasHash(string) (bool, error)
-
 	Close()
+}
 
+type searchDB interface {
 	AddBooks([]booksing.Book) error
-	AddBook(booksing.Book) error
-	GetBook(string) (*booksing.Book, error)
+	GetBookCount() int
+	HasHash(string) (bool, error)
 	DeleteBook(string) error
 	GetBooks(string, int64, int64) (*booksing.SearchResult, error)
+	GetBook(string) (*booksing.Book, error)
 }

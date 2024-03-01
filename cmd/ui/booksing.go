@@ -52,7 +52,7 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	hash := c.Query("hash")
 	file := c.Query("file")
 
-	book, err := app.db.GetBook(hash)
+	book, err := app.searchDB.GetBook(hash)
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":  err,
@@ -73,15 +73,6 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	err = app.db.AddDownload(dl)
 	if err != nil {
 		app.logger.WithField("err", err).Error("could not store download")
-	}
-
-	_, err = app.slev.NewEvent("booksing", "booksing.download", gin.H{
-		"user": username,
-		"ip":   ip,
-		"hash": hash,
-	})
-	if err != nil {
-		app.logger.WithField("err", err).Error("unable to store slev event")
 	}
 
 	if file != "" {
@@ -202,11 +193,11 @@ func (app *booksingApp) refresh() {
 		books = append(books, *book)
 		counter++
 		if len(books) == 50 || processed == toProcess {
-			err = app.db.AddBooks(books)
+			err = app.searchDB.AddBooks(books)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
-				}).Warning("bulk insert failed")
+				}).Warning("bulk insert into meili failed")
 			}
 			books = []booksing.Book{}
 		}
@@ -218,7 +209,7 @@ func (app *booksingApp) refresh() {
 	}
 	if len(books) > 0 {
 		app.logger.Error("This should absolutely not happen")
-		err = app.db.AddBooks(books)
+		err = app.searchDB.AddBooks(books)
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
 				"reason": "bulk insert failed",
@@ -228,7 +219,6 @@ func (app *booksingApp) refresh() {
 	}
 
 	app.logger.Info("Done with refresh")
-	app.recentCache = nil
 
 	//move none epub files to failed dir
 

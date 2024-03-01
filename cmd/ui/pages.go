@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -14,6 +15,42 @@ import (
 	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 )
+
+func (app *booksingApp) searchAPI(c *gin.Context) {
+	var offset int64
+	var limit int64
+	var err error
+	offset = 0
+	limit = 20
+	q := c.Query("q")
+	off := c.Query("o")
+	if off != "" {
+		offset, err = strconv.ParseInt(off, 10, 64)
+		if err != nil {
+			offset = 0
+		}
+	}
+	lim := c.Query("l")
+	if lim != "" {
+		limit, err = strconv.ParseInt(lim, 10, 64)
+		if err != nil {
+			limit = 20
+		}
+	}
+
+	var books *booksing.SearchResult
+
+	books, err = app.searchDB.GetBooks(q, limit, offset)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+			Q:     q,
+		})
+		return
+	}
+
+	c.JSON(200, books)
+}
 
 func (app *booksingApp) search(c *gin.Context) {
 	start := time.Now()
@@ -40,23 +77,13 @@ func (app *booksingApp) search(c *gin.Context) {
 
 	var books *booksing.SearchResult
 
-	if q == "" && app.recentCache != nil {
-		//return books from cache
-		books = app.recentCache
-		app.logger.Warning("Serving from cache")
-
-	} else {
-		books, err = app.db.GetBooks(q, limit, offset)
-		if err != nil {
-			c.HTML(500, "error.html", V{
-				Error: err,
-				Q:     q,
-			})
-			return
-		}
-		if q == "" {
-			app.recentCache = books
-		}
+	books, err = app.searchDB.GetBooks(q, limit, offset)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+			Q:     q,
+		})
+		return
 	}
 
 	stop := time.Since(start)
@@ -76,7 +103,7 @@ func (app *booksingApp) search(c *gin.Context) {
 		Error:      err,
 		Q:          q,
 		IsAdmin:    c.GetBool("isAdmin"),
-		TotalBooks: app.db.GetBookCount(),
+		TotalBooks: app.searchDB.GetBookCount(),
 		Indexing:   app.state == "indexing",
 	})
 }
@@ -96,7 +123,7 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 		Error:      err,
 		Q:          "",
 		IsAdmin:    c.GetBool("isAdmin"),
-		TotalBooks: app.db.GetBookCount(),
+		TotalBooks: app.searchDB.GetBookCount(),
 		Users:      users,
 		Indexing:   app.state == "indexing",
 	})
@@ -106,7 +133,7 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 func (app *booksingApp) deleteBook(c *gin.Context) {
 	hash := c.Param("hash")
 
-	book, err := app.db.GetBook(hash)
+	book, err := app.searchDB.GetBook(hash)
 	if err != nil {
 		c.HTML(404, "error.html", V{
 			Error: errors.New("Book not found"),
@@ -127,7 +154,7 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 		return
 	}
 
-	err = app.db.DeleteBook(hash)
+	err = app.searchDB.DeleteBook(hash)
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"hash": hash,
@@ -158,7 +185,7 @@ func (app *booksingApp) showDownloads(c *gin.Context) {
 		Error:      err,
 		Q:          "",
 		IsAdmin:    c.GetBool("isAdmin"),
-		TotalBooks: app.db.GetBookCount(),
+		TotalBooks: app.searchDB.GetBookCount(),
 		Downloads:  dls,
 		Indexing:   app.state == "indexing",
 	})
@@ -168,8 +195,9 @@ func (app *booksingApp) showDownloads(c *gin.Context) {
 func (app *booksingApp) detailPage(c *gin.Context) {
 	hash := c.Param("hash")
 
-	b, err := app.db.GetBook(hash)
+	b, err := app.searchDB.GetBook(hash)
 	if err != nil {
+		slog.Error("could not find book", "err", err, "hash", hash)
 		c.HTML(500, "error.html", V{
 			Error: err,
 		})
@@ -198,7 +226,7 @@ func (app *booksingApp) detailPage(c *gin.Context) {
 		Book:       b,
 		ExtraPaths: books,
 		IsAdmin:    c.GetBool("isAdmin"),
-		TotalBooks: app.db.GetBookCount(),
+		TotalBooks: app.searchDB.GetBookCount(),
 		Indexing:   app.state == "indexing",
 	})
 

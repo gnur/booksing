@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
+	"github.com/gnur/booksing/meili"
 	"github.com/gnur/booksing/sqlite"
-	"github.com/gnur/slev"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -48,8 +48,8 @@ type configuration struct {
 	AdminUser         string   `default:"unknown"`
 	AllowAllusers     bool     `default:"true"`
 	BindAddress       string   `default:":7132"`
+	MeiliAddress      string   `default:"http://localhost:7700"`
 	BookDir           string   `default:"./books/"`
-	EventsPort        string   `default:":8821"`
 	DatabaseDir       string   `default:"./db/"`
 	FailDir           string   `default:"./failed"`
 	ImportDir         string   `default:"./import"`
@@ -80,6 +80,12 @@ func main() {
 	}
 	defer db.Close()
 
+	var search searchDB
+	search, err = meili.New(cfg.MeiliAddress, "", "booksDev")
+	if err != nil {
+		log.WithField("err", err).Fatal("could not create meili search")
+	}
+
 	tz, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
 		log.WithField("err", err).Fatal("could not load timezone")
@@ -93,15 +99,9 @@ func main() {
 		return
 	}
 
-	sl, err := slev.Start(slev.UseDefaultHTTPServer(cfg.EventsPort))
-	if err != nil {
-		log.WithError(err).Fatal("Could not start slev")
-		return
-	}
-
 	app := booksingApp{
 		db:        db,
-		slev:      sl,
+		searchDB:  search,
 		bookDir:   cfg.BookDir,
 		importDir: cfg.ImportDir,
 		timezone:  tz,
@@ -132,7 +132,7 @@ func main() {
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": app.state,
-			"total":  app.db.GetBookCount(),
+			"total":  app.searchDB.GetBookCount(),
 		})
 	})
 
@@ -140,6 +140,7 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
+		auth.GET("/api/search", app.searchAPI)
 		auth.GET("/detail/:hash", app.detailPage)
 		auth.GET("/download", app.downloadBook)
 		auth.GET("/cover", app.cover)
