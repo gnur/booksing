@@ -5,7 +5,7 @@ function log {
 }
 
 log "Building binary"
-CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -tags 'fts5' -o booksing ./cmd/ui
+GOOS=linux GOARCH=amd64 go build -o booksing ./cmd/ui
 
 
 log "copying to uranus"

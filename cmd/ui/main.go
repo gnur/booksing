@@ -1,47 +1,18 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"html/template"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/meili"
-	"github.com/gnur/booksing/sqlite"
 
 	"github.com/kelseyhightower/envconfig"
-	log "github.com/sirupsen/logrus"
 )
-
-//go:embed static
-var staticFiles embed.FS
-
-//go:embed templates
-var templateFiles embed.FS
-
-// V is the holder struct for all possible template values
-type V struct {
-	Results    int64
-	Error      error
-	Books      []booksing.Book
-	Book       *booksing.Book
-	ExtraPaths []string
-	Users      []booksing.User
-	Downloads  []booksing.Download
-	Q          string
-	TimeTaken  int
-	IsAdmin    bool
-	Username   string
-	TotalBooks int
-	Limit      int64
-	Offset     int64
-	Indexing   bool
-}
 
 type configuration struct {
 	AcceptedLanguages []string `default:""`
@@ -50,7 +21,6 @@ type configuration struct {
 	BindAddress       string   `default:":7132"`
 	MeiliAddress      string   `default:"http://localhost:7700"`
 	BookDir           string   `default:"./books/"`
-	DatabaseDir       string   `default:"./db/"`
 	FailDir           string   `default:"./failed"`
 	ImportDir         string   `default:"./import"`
 	LogLevel          string   `default:"info"`
@@ -63,50 +33,29 @@ func main() {
 	var cfg configuration
 	err := envconfig.Process("booksing", &cfg)
 	if err != nil {
-		log.WithField("err", err).Fatal("Could not parse full config from environment")
+		slog.Error("Could not parse full config from environment", "err", err)
+		return
 	}
-
-	logLevel, err := log.ParseLevel(cfg.LogLevel)
-	if err == nil {
-		log.SetLevel(logLevel)
-	}
-
-	var db database
-	log.WithField("dbpath", cfg.DatabaseDir).Debug("using this file")
-	db, err = sqlite.New(cfg.DatabaseDir)
-
-	if err != nil {
-		log.WithField("err", err).Fatal("could not create fileDB")
-	}
-	defer db.Close()
 
 	var search searchDB
 	search, err = meili.New(cfg.MeiliAddress, "", "booksDev")
 	if err != nil {
-		log.WithField("err", err).Fatal("could not create meili search")
+		slog.Error("could not create meili search", "err", err)
+		return
 	}
 
 	tz, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
-		log.WithField("err", err).Fatal("could not load timezone")
-	}
-
-	tpl := template.New("")
-	tpl.Funcs(templateFunctions)
-	tpl, err = tpl.ParseFS(templateFiles, "templates/*.html")
-	if err != nil {
-		log.WithField("err", err).Fatal("could not read templates")
+		slog.Error("could not load timezone", "err", err)
 		return
 	}
 
 	app := booksingApp{
-		db:        db,
 		searchDB:  search,
 		bookDir:   cfg.BookDir,
 		importDir: cfg.ImportDir,
 		timezone:  tz,
 		adminUser: cfg.AdminUser,
-		logger:    log.WithField("app", "booksing"),
 		cfg:       cfg,
 	}
 
@@ -114,61 +63,68 @@ func main() {
 		go app.refreshLoop()
 	}
 
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.New()
-	r.Use(Logger(app.logger), gin.Recovery())
-	r.SetHTMLTemplate(tpl)
+	/*
 
-	static := r.Group("/", func(c *gin.Context) {
-		c.Header("Cache-Control", "public, max-age=86400, immutable")
-	})
+			static := r.Group("/", func(c *gin.Context) {
+				c.Header("Cache-Control", "public, max-age=86400, immutable")
+			})
 
-	static.StaticFS("/static", http.FS(staticFiles))
-
-	r.GET("/kill", func(c *gin.Context) {
-		app.logger.Fatal("Killing so I get restarted anew")
-	})
-
-	r.GET("/status", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": app.state,
-			"total":  app.searchDB.GetBookCount(),
+		r.GET("/status", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"status": app.state,
+				"total":  app.searchDB.GetBookCount(),
+			})
 		})
-	})
 
-	auth := r.Group("/")
-	auth.Use(app.BearerTokenMiddleware())
-	{
-		auth.GET("/", app.search)
-		auth.GET("/api/search", app.searchAPI)
-		auth.GET("/detail/:hash", app.detailPage)
-		auth.GET("/download", app.downloadBook)
-		auth.GET("/cover", app.cover)
+		auth := r.Group("/")
+		auth.Use(app.BearerTokenMiddleware())
+		{
+			//auth.GET("/", app.search)
+			r.GET("/api/search", app.searchAPI)
+			r.GET("/detail/:hash", app.detailPage)
+			r.GET("/download", app.downloadBook)
+			r.GET("/cover", app.cover)
 
-	}
+		}
 
-	admin := r.Group("/admin")
-	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
-	{
-		admin.GET("/users", app.showUsers)
-		admin.GET("/downloads", app.showDownloads)
-		admin.POST("/delete/:hash", app.deleteBook)
-		admin.POST("user/:username", app.updateUser)
-		admin.POST("/adduser", app.addUser)
-	}
+		admin := r.Group("/admin")
+		admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
+		{
+			admin.GET("/users", app.showUsers)
+			admin.GET("/downloads", app.showDownloads)
+			admin.POST("/delete/:hash", app.deleteBook)
+			admin.POST("user/:username", app.updateUser)
+			admin.POST("/adduser", app.addUser)
+		}
+
+		r.StaticFS("/_nuxt", http.FS(booksing.NuxtElements))
+		r.GET("/", func(c *gin.Context) {
+			c.Data(200, "text/html", booksing.NuxtIndexHTML)
+		})
+
+		// */
 
 	port := os.Getenv("PORT")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/_nuxt/", static)
+	mux.HandleFunc("/api/search", app.searchAPI)
+	mux.HandleFunc("/book.png", bookPNG)
+	mux.HandleFunc("/cover", app.getCover)
+	mux.HandleFunc("/download", app.downloadBook)
+	mux.HandleFunc("/", index)
 
 	if port == "" {
 		port = cfg.BindAddress
 	} else {
 		port = fmt.Sprintf(":%s", port)
 	}
-	log.WithField("port", port).Info("booksing is now running")
+	slog.Info("booksing is now running", "port", port)
 
-	err = r.Run(port)
+	//err = r.Run(port)
+	err = http.ListenAndServe(port, mux)
 	if err != nil {
-		log.WithField("err", err).Fatal("unable to start running")
+		slog.Error("unable to start running", "err", err)
 	}
 }
 
