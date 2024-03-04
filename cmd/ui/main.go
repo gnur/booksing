@@ -16,8 +16,6 @@ import (
 
 type configuration struct {
 	AcceptedLanguages []string `default:""`
-	AdminUser         string   `default:"unknown"`
-	AllowAllusers     bool     `default:"true"`
 	BindAddress       string   `default:":7132"`
 	MeiliAddress      string   `default:"http://localhost:7700"`
 	BookDir           string   `default:"./books/"`
@@ -55,7 +53,6 @@ func main() {
 		bookDir:   cfg.BookDir,
 		importDir: cfg.ImportDir,
 		timezone:  tz,
-		adminUser: cfg.AdminUser,
 		cfg:       cfg,
 	}
 

@@ -12,8 +12,6 @@ type meiliDB struct {
 	index *meilisearch.Index
 }
 
-type download = booksing.Download
-
 func New(host, key, indexName string) (*meiliDB, error) {
 
 	client := meilisearch.NewClient(meilisearch.ClientConfig{
