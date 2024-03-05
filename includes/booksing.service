@@ -10,8 +10,6 @@ Environment=GOMAXPROCS=4
 Environment=GIN_MODE=release
 
 Environment=BOOKSING_ACCEPTEDLANGUAGES="nl,en"
-Environment=BOOKSING_ADMINUSER='unknown'
-Environment=BOOKSING_ALLOWALLUSERS=true
 Environment=BOOKSING_BINDADDRESS=":7132"
 Environment=BOOKSING_BOOKDIR="/var/lib/booksing/books"
 Environment=BOOKSING_DATABASEDIR="/var/lib/booksing/db"
@@ -20,10 +18,9 @@ Environment=BOOKSING_IMPORTDIR="/var/lib/booksing/import"
 Environment=BOOKSING_LOGLEVEL=info
 Environment=BOOKSING_MAXSIZE="50000000"
 Environment=BOOKSING_TIMEZONE="Europe/Amsterdam"
+Environment=BOOKSING_MEILIADDRESS="http://localhost:7700"
+Environment=BOOKSING_MEILISECRET="lksdjflakndsg"
 
-#if you use cloudflare access in front of booksing, you can use this to get the e-mail addresses 
-#of your users and restrict/allow access based on that
-Environment=BOOKSING_USERHEADER="Cf-Access-Authenticated-User-Email"
 
 LimitNOFILE=65536
 

@@ -25,7 +25,6 @@ type configuration struct {
 	LogLevel          string   `default:"info"`
 	MaxSize           int64    `default:"0"`
 	Timezone          string   `default:"Europe/Amsterdam"`
-	UserHeader        string   `default:""`
 }
 
 func main() {

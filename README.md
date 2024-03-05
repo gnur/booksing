@@ -25,18 +25,17 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 
 Set the following env vars to configure booksing:
 
-| env var               | default            | required | purpose                                                                                                                  |
-| --------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| BOOKSING_BINDADDRESS  | `localhost:7132`   | :x:      | The bind address, if external access is needed this should be changed to `:7132`                                         |
-| BOOKSING_BOOKDIR      | `./books/`         | :x:      | The directory where books are stored after importing                                                                     |
-| BOOKSING_FAILDIR      | `./failed`         | :x:      | The directory where books are moved if the import fails                                                                  |
-| BOOKSING_IMPORTDIR    | `./import`         | :x:      | The directory where booksing will periodically look for books                                                            |
-| BOOKSING_LOGLEVEL     | `info`             | :x:      | determines the loglevel, supported values: error, warning, info, debug                                                   |
-| BOOKSING_MAXSIZE      | `0`                | :x:      | If set, any epub larger than this size in bytes will be automatically deleted, can be useful with limited diskspace      |
-| BOOKSING_TIMEZONE     | `Europe/Amsterdam` | :x:      | Timezone used for storing all time information                                                                           |
-| BOOKSING_USERHEADER   | `-`                | :x:      | The header to take the username from (if behind cloudflare access, this should be: `Cf-Access-Authenticated-User-Email`) |
-| BOOKSING_MEILIADDRESS | `localhost:7700`   | :x:      | Address to find meilisearch                                                                                              |
-| BOOKSING_MEILISECRET  | `-`                | :x:      | Secret to connect to meilisearch                                                                                         |
+| env var               | default                 | required | purpose                                                                                                             |
+| --------------------- | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| BOOKSING_BINDADDRESS  | `localhost:7132`        | :x:      | The bind address, if external access is needed this should be changed to `:7132`                                    |
+| BOOKSING_BOOKDIR      | `./books/`              | :x:      | The directory where books are stored after importing                                                                |
+| BOOKSING_FAILDIR      | `./failed`              | :x:      | The directory where books are moved if the import fails                                                             |
+| BOOKSING_IMPORTDIR    | `./import`              | :x:      | The directory where booksing will periodically look for books                                                       |
+| BOOKSING_LOGLEVEL     | `info`                  | :x:      | determines the loglevel, supported values: error, warning, info, debug                                              |
+| BOOKSING_MAXSIZE      | `0`                     | :x:      | If set, any epub larger than this size in bytes will be automatically deleted, can be useful with limited diskspace |
+| BOOKSING_TIMEZONE     | `Europe/Amsterdam`      | :x:      | Timezone used for storing all time information                                                                      |
+| BOOKSING_MEILIADDRESS | `http://localhost:7700` | :x:      | Address to find meilisearch                                                                                         |
+| BOOKSING_MEILISECRET  | `""`                    | :x:      | Secret to connect to meilisearch                                                                                    |
 
 ## Example first run
 
