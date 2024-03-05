@@ -18,6 +18,7 @@ type configuration struct {
 	AcceptedLanguages []string `default:""`
 	BindAddress       string   `default:":7132"`
 	MeiliAddress      string   `default:"http://localhost:7700"`
+	MeiliSecret       string   `default:""`
 	BookDir           string   `default:"./books/"`
 	FailDir           string   `default:"./failed"`
 	ImportDir         string   `default:"./import"`
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	var search searchDB
-	search, err = meili.New(cfg.MeiliAddress, "", "booksDev")
+	search, err = meili.New(cfg.MeiliAddress, cfg.MeiliSecret, "booksDev")
 	if err != nil {
 		slog.Error("could not create meili search", "err", err)
 		return
@@ -60,47 +61,6 @@ func main() {
 		go app.refreshLoop()
 	}
 
-	/*
-
-			static := r.Group("/", func(c *gin.Context) {
-				c.Header("Cache-Control", "public, max-age=86400, immutable")
-			})
-
-		r.GET("/status", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"status": app.state,
-				"total":  app.searchDB.GetBookCount(),
-			})
-		})
-
-		auth := r.Group("/")
-		auth.Use(app.BearerTokenMiddleware())
-		{
-			//auth.GET("/", app.search)
-			r.GET("/api/search", app.searchAPI)
-			r.GET("/detail/:hash", app.detailPage)
-			r.GET("/download", app.downloadBook)
-			r.GET("/cover", app.cover)
-
-		}
-
-		admin := r.Group("/admin")
-		admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
-		{
-			admin.GET("/users", app.showUsers)
-			admin.GET("/downloads", app.showDownloads)
-			admin.POST("/delete/:hash", app.deleteBook)
-			admin.POST("user/:username", app.updateUser)
-			admin.POST("/adduser", app.addUser)
-		}
-
-		r.StaticFS("/_nuxt", http.FS(booksing.NuxtElements))
-		r.GET("/", func(c *gin.Context) {
-			c.Data(200, "text/html", booksing.NuxtIndexHTML)
-		})
-
-		// */
-
 	port := os.Getenv("PORT")
 
 	mux := http.NewServeMux()
@@ -119,7 +79,6 @@ func main() {
 	}
 	slog.Info("booksing is now running", "port", port)
 
-	//err = r.Run(port)
 	err = http.ListenAndServe(port, mux)
 	if err != nil {
 		slog.Error("unable to start running", "err", err)

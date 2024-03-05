@@ -31,11 +31,17 @@ func static(w http.ResponseWriter, r *http.Request) {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	w.Write(booksing.NuxtIndexHTML)
+	_, err := w.Write(booksing.NuxtIndexHTML)
+	if err != nil {
+		slog.Warn("failed to write index", "err", err)
+	}
 }
 
 func bookPNG(w http.ResponseWriter, r *http.Request) {
-	w.Write(booksing.BookPNG)
+	_, err := w.Write(booksing.BookPNG)
+	if err != nil {
+		slog.Warn("failed to write index", "err", err)
+	}
 }
 
 type countResult struct {
@@ -49,7 +55,10 @@ func (app *booksingApp) count(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("failed to marshal count", "err", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	_, err = w.Write(js)
+	if err != nil {
+		slog.Warn("failed to write index", "err", err)
+	}
 }
 
 func (app *booksingApp) getCover(w http.ResponseWriter, r *http.Request) {
@@ -80,8 +89,7 @@ func (app *booksingApp) searchAPI(w http.ResponseWriter, r *http.Request) {
 			offset = 0
 		}
 	}
-	lim := r.URL.Query().Get("l")
-	if lim != "" {
+	if lim := r.URL.Query().Get("l"); lim != "" {
 		limit, err = strconv.ParseInt(lim, 10, 64)
 		if err != nil {
 			limit = 20
@@ -104,7 +112,10 @@ func (app *booksingApp) searchAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	js, _ := json.Marshal(books)
-	w.Write(js)
+	_, err = w.Write(js)
+	if err != nil {
+		slog.Warn("failed to write search result", "err", err)
+	}
 
 }
 

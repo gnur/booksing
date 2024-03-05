@@ -3,7 +3,6 @@ package booksing
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,6 +10,9 @@ import (
 	"time"
 
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
@@ -46,28 +48,6 @@ type Book struct {
 	Series      string
 	PublishDate time.Time
 	SeriesIndex float64
-}
-
-type BookInput struct {
-	Title       string
-	Author      string
-	Language    string
-	Description string
-	Path        string
-}
-
-func (b *BookInput) ToBook() Book {
-	var book Book
-	book.Author = Fix(b.Author, true, true)
-	book.Title = Fix(b.Title, true, false)
-	book.Language = FixLang(b.Language)
-	book.Description = b.Description
-	book.Path = b.Path
-
-	book.Hash = HashBook(book.Author, book.Title)
-
-	return book
-
 }
 
 type FileLocation struct {
@@ -130,7 +110,7 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	book.Path = fp
 	if book.HasCover {
 		book.CoverPath = strings.Replace(fp, ".epub", ".jpg", 1)
-		err = ioutil.WriteFile(book.CoverPath, cover, 0644)
+		err = os.WriteFile(book.CoverPath, cover, 0644)
 		if err != nil {
 			return &book, ErrCoverWriteFailed
 		}
@@ -227,8 +207,8 @@ func Fix(s string, capitalize, correctOrder bool) string {
 		return "Unknown"
 	}
 	if capitalize {
-		s = strings.Title(strings.ToLower(s))
-		s = strings.Replace(s, "'S", "'s", -1)
+		c := cases.Title(language.Und, cases.NoLower)
+		s = c.String(s)
 	}
 	if correctOrder && strings.Contains(s, ",") {
 		sParts := strings.Split(s, ",")

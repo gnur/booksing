@@ -12,7 +12,6 @@ type booksingApp struct {
 	bookDir   string
 	importDir string
 	timezone  *time.Location
-	adminUser string
 	cfg       configuration
 	state     string
 }
