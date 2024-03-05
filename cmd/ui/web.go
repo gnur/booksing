@@ -38,6 +38,20 @@ func bookPNG(w http.ResponseWriter, r *http.Request) {
 	w.Write(booksing.BookPNG)
 }
 
+type countResult struct {
+	Total int `json:"total"`
+}
+
+func (app *booksingApp) count(w http.ResponseWriter, r *http.Request) {
+	count := app.searchDB.GetBookCount()
+	js, err := json.Marshal(countResult{Total: count})
+	if err != nil {
+		slog.Warn("failed to marshal count", "err", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+}
+
 func (app *booksingApp) getCover(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 
@@ -57,7 +71,7 @@ func (app *booksingApp) searchAPI(w http.ResponseWriter, r *http.Request) {
 	var limit int64
 	var err error
 	offset = 0
-	limit = 20
+	limit = 9
 	q := r.URL.Query().Get("q")
 	off := r.URL.Query().Get("o")
 	if off != "" {

@@ -107,8 +107,9 @@ func main() {
 	mux.HandleFunc("/_nuxt/", static)
 	mux.HandleFunc("/api/search", app.searchAPI)
 	mux.HandleFunc("/book.png", bookPNG)
-	mux.HandleFunc("/cover", app.getCover)
-	mux.HandleFunc("/download", app.downloadBook)
+	mux.HandleFunc("/api/cover", app.getCover)
+	mux.HandleFunc("/api/download", app.downloadBook)
+	mux.HandleFunc("/api/count", app.count)
 	mux.HandleFunc("/", index)
 
 	if port == "" {

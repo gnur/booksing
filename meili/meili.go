@@ -2,6 +2,7 @@ package meili
 
 import (
 	"log/slog"
+	"slices"
 
 	"github.com/gnur/booksing"
 	"github.com/meilisearch/meilisearch-go"
@@ -11,6 +12,8 @@ type meiliDB struct {
 	db    *meilisearch.Client
 	index *meilisearch.Index
 }
+
+var stopWords = []string{"de", "het", "een", "the", "a", "an", "of", "and", "or", "in", "to", "for", "on", "at", "by"}
 
 func New(host, key, indexName string) (*meiliDB, error) {
 
@@ -27,6 +30,25 @@ func New(host, key, indexName string) (*meiliDB, error) {
 	if err != nil {
 		slog.Warn("Failed to create index", "err", err)
 		return nil, err
+	}
+
+	cur, err := index.GetStopWords()
+	if err != nil {
+		slog.Warn("Failed to get stopWords", "err", err)
+		return nil, err
+	}
+
+	slices.Sort(stopWords)
+
+	if slices.Equal(*cur, stopWords) {
+		slog.Info("StopWords are already set")
+	} else {
+		slog.Info("updating stopWords in database", "current", cur, "new", stopWords)
+		_, err = index.UpdateStopWords(&stopWords)
+		if err != nil {
+			slog.Warn("Failed to update stopWords", "err", err)
+			return nil, err
+		}
 	}
 
 	return &meiliDB{

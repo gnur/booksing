@@ -39,6 +39,13 @@ export BOOKSING_SAVEINTERVAL="20s"
 export BOOKSING_BINDADDRESS="localhost:7133"
 export BOOKSING_ACCEPTEDLANGUAGES="nl,en"
 
+
+# weird workaround need so tailscale funnel can work as well
+export NITRO_HOST=127.0.0.1
+export NITRO_PORT=3000
+
+/Applications/Tailscale.app/Contents/MacOS/Tailscale funnel 3000 &
+
 cd web
 bun run dev &
 cd -

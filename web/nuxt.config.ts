@@ -4,20 +4,8 @@ export default defineNuxtConfig({
 
   nitro: {
     devProxy: {
-      "/api/search": {
-        target: "http://127.0.0.1:7133/api/search",
-        changeOrigin: false,
-        prependPath: true,
-        toProxy: true,
-      },
-      "/download": {
-        target: "http://127.0.0.1:7133/download",
-        changeOrigin: false,
-        prependPath: true,
-        toProxy: true,
-      },
-      "/cover": {
-        target: "http://127.0.0.1:7133/cover",
+      "/api": {
+        target: "http://127.0.0.1:7133/api",
         changeOrigin: false,
         prependPath: true,
         toProxy: true,
