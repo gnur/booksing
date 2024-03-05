@@ -1,0 +1,17 @@
+apiVersion: skaffold/v4beta9
+kind: Config
+metadata:
+  name: mnrp
+build:
+  artifacts:
+    - image: moon.goat-gecko.ts.net/gnur/booksing
+      platforms:
+        - linux/amd64
+      context: .
+      ko:
+        dependencies:
+          paths:
+            - '**/*.go'
+            - go.*
+            - 'web/.output/**'
+            - 'epub/*.go'

@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
 	"golang.org/x/sync/semaphore"
 )
@@ -53,14 +52,14 @@ func (app *booksingApp) refresh() {
 		slog.Debug("no new books found")
 		return
 	}
-	var books []booksing.Book
+	var books []Book
 	counter := 0
 
 	slog.Info("located books on filesystem, processing per batchsize", "total", len(matches), "bookdir", app.importDir)
 
 	ctx := context.TODO()
 	toProcess := len(matches)
-	bookQ := make(chan *booksing.Book)
+	bookQ := make(chan *Book)
 	sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 
 	for _, filename := range matches {
@@ -72,7 +71,7 @@ func (app *booksingApp) refresh() {
 			}
 			defer sem.Release(1)
 
-			book, err := booksing.NewBookFromFile(f, app.bookDir)
+			book, err := NewBookFromFile(f, app.bookDir)
 			if err != nil {
 				slog.Error("failed to parse book", "err", err, "file", f)
 				app.moveBookToFailed(f)
@@ -105,7 +104,7 @@ func (app *booksingApp) refresh() {
 			if err != nil {
 				slog.Error("bulk insert into meili failed", "err", err)
 			}
-			books = []booksing.Book{}
+			books = []Book{}
 		}
 		slog.Debug("processed book", "counter", counter, "total", toProcess)
 		if processed == toProcess {

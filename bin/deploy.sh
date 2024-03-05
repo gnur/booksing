@@ -4,16 +4,10 @@ function log {
     echo "> $(date +%T) $*"
 }
 
-log "Building binary"
-GOOS=linux GOARCH=amd64 go build -o booksing ./cmd/ui
+log "generating static files"
+cd web;
+bun run generate -- --preset=static || exit 1
+cd -
 
-
-log "copying to uranus"
-upx booksing
-scp booksing uranus:/tmp/booksing
-
-log "Sending restart trigger"
-ssh uranus "sudo systemctl restart booksing"
-
-log "Deployed app in ${SECONDS} seconds"
-ssh uranus "sudo journalctl -u booksing -f"
+log "Building container and pushing"
+skaffold build

@@ -1,10 +1,11 @@
-package meili
+package main
 
 import (
+	"fmt"
 	"log/slog"
 	"slices"
+	"time"
 
-	"github.com/gnur/booksing"
 	"github.com/meilisearch/meilisearch-go"
 )
 
@@ -15,7 +16,7 @@ type meiliDB struct {
 
 var stopWords = []string{"de", "het", "een", "the", "a", "an", "of", "and", "or", "in", "to", "for", "on", "at", "by"}
 
-func New(host, key, indexName string) (*meiliDB, error) {
+func NewMeiliSearch(host, key, indexName string) (*meiliDB, error) {
 
 	client := meilisearch.NewClient(meilisearch.ClientConfig{
 		Host: host,
@@ -23,13 +24,23 @@ func New(host, key, indexName string) (*meiliDB, error) {
 	})
 	// An index is where the documents are stored.
 	index := client.Index(indexName)
-	_, err := client.CreateIndex(&meilisearch.IndexConfig{
+	state, err := client.CreateIndex(&meilisearch.IndexConfig{
 		Uid:        indexName,
 		PrimaryKey: "Hash",
 	})
 	if err != nil {
 		slog.Warn("Failed to create index", "err", err)
 		return nil, err
+	}
+	for {
+		t, err := client.GetTask(state.TaskUID)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve meili task status: %w", err)
+		}
+		if t.Status == meilisearch.TaskStatusSucceeded {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	cur, err := index.GetStopWords()
@@ -66,7 +77,7 @@ func (db *meiliDB) GetBookCount() int {
 }
 
 func (db *meiliDB) HasHash(h string) (bool, error) {
-	var doc booksing.Book
+	var doc Book
 	err := db.index.GetDocument(h, nil, &doc)
 	if doc.Hash == h {
 		return true, nil
@@ -74,13 +85,13 @@ func (db *meiliDB) HasHash(h string) (bool, error) {
 	return false, err
 }
 
-func (db *meiliDB) GetBook(h string) (*booksing.Book, error) {
-	var b booksing.Book
+func (db *meiliDB) GetBook(h string) (*Book, error) {
+	var b Book
 	err := db.index.GetDocument(h, nil, &b)
 	return &b, err
 }
 
-func (db *meiliDB) AddBooks(books []booksing.Book) error {
+func (db *meiliDB) AddBooks(books []Book) error {
 	//TODO: do something with task info or ignore?
 	_, err := db.index.AddDocuments(books)
 	return err
@@ -92,9 +103,9 @@ func (db *meiliDB) DeleteBook(hash string) error {
 	return err
 }
 
-func (db *meiliDB) GetBooks(q string, limit, offset int64) (*booksing.SearchResult, error) {
+func (db *meiliDB) GetBooks(q string, limit, offset int64) (*SearchResult, error) {
 
-	var books []booksing.Book
+	var books []Book
 
 	resp, err := db.index.Search(q, &meilisearch.SearchRequest{
 		Limit:  limit,
@@ -112,7 +123,7 @@ func (db *meiliDB) GetBooks(q string, limit, offset int64) (*booksing.SearchResu
 		books = append(books, *book)
 	}
 
-	return &booksing.SearchResult{
+	return &SearchResult{
 		Items: books,
 		Total: resp.EstimatedTotalHits,
 	}, nil

@@ -9,12 +9,10 @@ import (
 	"path"
 	"strconv"
 	"strings"
-
-	"github.com/gnur/booksing"
 )
 
 func static(w http.ResponseWriter, r *http.Request) {
-	fsPublic, _ := fs.Sub(booksing.NuxtElements, "web/.output/public")
+	fsPublic, _ := fs.Sub(NuxtElements, "web/.output/public")
 	fs := http.FileServer(http.FS(fsPublic))
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 
@@ -31,14 +29,14 @@ func static(w http.ResponseWriter, r *http.Request) {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write(booksing.NuxtIndexHTML)
+	_, err := w.Write(NuxtIndexHTML)
 	if err != nil {
 		slog.Warn("failed to write index", "err", err)
 	}
 }
 
 func bookPNG(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write(booksing.BookPNG)
+	_, err := w.Write(BookPNG)
 	if err != nil {
 		slog.Warn("failed to write index", "err", err)
 	}
@@ -96,7 +94,7 @@ func (app *booksingApp) searchAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var books *booksing.SearchResult
+	var books *SearchResult
 
 	books, err = app.searchDB.GetBooks(q, limit, offset)
 	if err != nil {

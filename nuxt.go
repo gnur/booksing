@@ -1,4 +1,4 @@
-package booksing
+package main
 
 import (
 	"embed"

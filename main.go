@@ -8,9 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gnur/booksing"
-	"github.com/gnur/booksing/meili"
-
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -36,7 +33,7 @@ func main() {
 	}
 
 	var search searchDB
-	search, err = meili.New(cfg.MeiliAddress, cfg.MeiliSecret, "booksDev")
+	search, err = NewMeiliSearch(cfg.MeiliAddress, cfg.MeiliSecret, "booksDev")
 	if err != nil {
 		slog.Error("could not create meili search", "err", err)
 		return
@@ -84,7 +81,7 @@ func main() {
 	}
 }
 
-func (app *booksingApp) keepBook(b *booksing.Book) bool {
+func (app *booksingApp) keepBook(b *Book) bool {
 	if b == nil {
 		return false
 	}

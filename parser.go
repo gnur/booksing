@@ -1,4 +1,4 @@
-package meili
+package main
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/gnur/booksing"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -19,8 +18,8 @@ func ParseTime(date string) (time.Time, error) {
 	return dateparse.ParseAny(date)
 }
 
-func parseResult(input interface{}) (*booksing.Book, error) {
-	var out booksing.Book
+func parseResult(input interface{}) (*Book, error) {
+	var out Book
 	config := mapstructure.DecoderConfig{
 		DecodeHook: func(
 			f reflect.Type,
