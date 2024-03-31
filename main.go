@@ -32,6 +32,8 @@ func main() {
 		return
 	}
 
+	slog.Info("Starting booksing")
+
 	var search searchDB
 	search, err = NewMeiliSearch(cfg.MeiliAddress, cfg.MeiliSecret, "booksDev")
 	if err != nil {
@@ -39,11 +41,15 @@ func main() {
 		return
 	}
 
+	slog.Info("Started meili integration")
+
 	tz, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
 		slog.Error("could not load timezone", "err", err)
 		return
 	}
+
+	slog.Info("Loaded timezone")
 
 	app := booksingApp{
 		searchDB:  search,
@@ -54,6 +60,7 @@ func main() {
 	}
 
 	if cfg.ImportDir != "" {
+		slog.Info("Starting refresh loop", "importDir", cfg.ImportDir)
 		go app.refreshLoop()
 	}
 
@@ -73,7 +80,7 @@ func main() {
 	} else {
 		port = fmt.Sprintf(":%s", port)
 	}
-	slog.Info("booksing is now running", "port", port)
+	slog.Info("booksing will now start listening", "port", port)
 
 	err = http.ListenAndServe(port, mux)
 	if err != nil {
