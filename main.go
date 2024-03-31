@@ -15,6 +15,7 @@ type configuration struct {
 	AcceptedLanguages []string `default:""`
 	BindAddress       string   `default:":7132"`
 	MeiliAddress      string   `default:"http://localhost:7700"`
+	MeiliIndex        string   `default:"booksing"`
 	MeiliSecret       string   `default:""`
 	BookDir           string   `default:"./books/"`
 	FailDir           string   `default:"./failed"`
@@ -35,7 +36,7 @@ func main() {
 	slog.Info("Starting booksing")
 
 	var search searchDB
-	search, err = NewMeiliSearch(cfg.MeiliAddress, cfg.MeiliSecret, "booksDev")
+	search, err = NewMeiliSearch(cfg.MeiliAddress, cfg.MeiliSecret, cfg.MeiliIndex)
 	if err != nil {
 		slog.Error("could not create meili search", "err", err)
 		return
