@@ -18,11 +18,13 @@ var stopWords = []string{"de", "het", "een", "the", "a", "an", "of", "and", "or"
 
 func NewMeiliSearch(host, key, indexName string) (*meiliDB, error) {
 
+	slog.Info("Creating meili search client", "host", host)
 	client := meilisearch.NewClient(meilisearch.ClientConfig{
 		Host: host,
 		//APIKey: key,
 	})
-	// An index is where the documents are stored.
+
+	slog.Info("Creating meili search index", "index", indexName)
 	index := client.Index(indexName)
 	state, err := client.CreateIndex(&meilisearch.IndexConfig{
 		Uid:        indexName,
@@ -32,7 +34,9 @@ func NewMeiliSearch(host, key, indexName string) (*meiliDB, error) {
 		slog.Warn("Failed to create index", "err", err)
 		return nil, err
 	}
+
 	for {
+		slog.Info("Waiting for index to be created")
 		t, err := client.GetTask(state.TaskUID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve meili task status: %w", err)
@@ -40,6 +44,7 @@ func NewMeiliSearch(host, key, indexName string) (*meiliDB, error) {
 		if t.Status == meilisearch.TaskStatusSucceeded {
 			break
 		}
+		slog.Info("Index not ready yet", "status", t.Status)
 		time.Sleep(10 * time.Millisecond)
 	}
 
