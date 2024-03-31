@@ -41,7 +41,7 @@ func NewMeiliSearch(host, key, indexName string) (*meiliDB, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve meili task status: %w", err)
 		}
-		if t.Status == meilisearch.TaskStatusSucceeded {
+		if t.Status == meilisearch.TaskStatusSucceeded || t.Status == meilisearch.TaskStatusFailed {
 			break
 		}
 		slog.Info("Index not ready yet", "status", t.Status)
