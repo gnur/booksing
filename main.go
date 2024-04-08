@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ type configuration struct {
 	LogLevel          string   `default:"info"`
 	MaxSize           int64    `default:"0"`
 	Timezone          string   `default:"Europe/Amsterdam"`
+	WebHookURL        string   `default:""`
 }
 
 func main() {
@@ -65,15 +67,24 @@ func main() {
 		go app.refreshLoop()
 	}
 
+	if cfg.WebHookURL != "" {
+		if _, err := url.Parse(cfg.WebHookURL); err != nil {
+			slog.Error("Webhook URL is invalid", "url", cfg.WebHookURL)
+		} else {
+			slog.Info("Webhook enabled", "url", cfg.WebHookURL)
+			app.webHookEnabled = true
+		}
+	}
+
 	port := os.Getenv("PORT")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_nuxt/", static)
-	mux.HandleFunc("/api/search", app.searchAPI)
 	mux.HandleFunc("/book.png", bookPNG)
+	mux.HandleFunc("/api/count", app.count)
 	mux.HandleFunc("/api/cover", app.getCover)
 	mux.HandleFunc("/api/download", app.downloadBook)
-	mux.HandleFunc("/api/count", app.count)
+	mux.HandleFunc("/api/search", app.searchAPI)
 	mux.HandleFunc("/", index)
 
 	if port == "" {

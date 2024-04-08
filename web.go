@@ -127,6 +127,14 @@ func (app *booksingApp) downloadBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if app.webHookEnabled {
+		app.fireWebHook(webHookData{
+			IPs:  getIPFromRequest(r),
+			User: getUserFromRequest(r),
+			Hash: hash,
+		})
+	}
+
 	fName := path.Base(book.Path)
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", fName))

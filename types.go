@@ -16,12 +16,13 @@ type SearchResult struct {
 
 // booksingApp holds all relevant global stuff for the booksing server
 type booksingApp struct {
-	searchDB  searchDB
-	bookDir   string
-	importDir string
-	timezone  *time.Location
-	cfg       configuration
-	state     string
+	searchDB       searchDB
+	bookDir        string
+	importDir      string
+	timezone       *time.Location
+	cfg            configuration
+	state          string
+	webHookEnabled bool
 }
 
 type searchDB interface {

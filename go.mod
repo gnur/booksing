@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/meilisearch/meilisearch-go v0.26.2
 	github.com/mitchellh/mapstructure v1.5.0
 )
@@ -24,9 +25,13 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.52.0 // indirect
+	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/oauth2 v0.19.0 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
 
 go 1.21
