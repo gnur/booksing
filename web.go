@@ -128,7 +128,8 @@ func (app *booksingApp) downloadBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.webHookEnabled {
-		app.fireWebHook(webHookData{
+		//do this async so the user does not have to wait for the webhook to finish
+		go app.fireWebHook(webHookData{
 			IPs:  getIPFromRequest(r),
 			User: getUserFromRequest(r),
 			Hash: hash,
