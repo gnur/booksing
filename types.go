@@ -23,6 +23,7 @@ type booksingApp struct {
 	cfg            configuration
 	state          string
 	webHookEnabled bool
+	refreshChan    chan bool
 }
 
 type searchDB interface {

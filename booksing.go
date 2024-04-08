@@ -26,8 +26,11 @@ var (
 
 func (app *booksingApp) refreshLoop() {
 	for {
-		app.refresh()
-		time.Sleep(time.Minute)
+		select {
+		case <-time.After(time.Minute):
+		case <-app.refreshChan:
+			app.refresh()
+		}
 	}
 }
 

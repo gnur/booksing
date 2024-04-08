@@ -55,11 +55,12 @@ func main() {
 	slog.Info("Loaded timezone")
 
 	app := booksingApp{
-		searchDB:  search,
-		bookDir:   cfg.BookDir,
-		importDir: cfg.ImportDir,
-		timezone:  tz,
-		cfg:       cfg,
+		searchDB:    search,
+		bookDir:     cfg.BookDir,
+		importDir:   cfg.ImportDir,
+		timezone:    tz,
+		cfg:         cfg,
+		refreshChan: make(chan bool),
 	}
 
 	if cfg.ImportDir != "" {
@@ -85,6 +86,7 @@ func main() {
 	mux.HandleFunc("/api/cover", app.getCover)
 	mux.HandleFunc("/api/download", app.downloadBook)
 	mux.HandleFunc("/api/search", app.searchAPI)
+	mux.HandleFunc("/api/add", app.addBook)
 	mux.HandleFunc("/", index)
 
 	if port == "" {
