@@ -73,6 +73,9 @@ function fileName(file: string) {
 }
 
 function nl2br(str: string) {
+  if (str.length >= 950) {
+    str = str.substring(0, 940) + '...\n(abbreviated)'
+  }
   return (str + '').replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, '$1<br>$2');
 }
 </script>

@@ -25,6 +25,7 @@ var (
 )
 
 func (app *booksingApp) refreshLoop() {
+	app.refresh()
 	for {
 		select {
 		case <-time.After(time.Minute):
@@ -39,6 +40,7 @@ func (app *booksingApp) refresh() {
 		slog.Warn("not refreshing because it is already running")
 		return
 	}
+	slog.Info("Scanning import dir")
 	defer atomic.StoreUint32(&locker, stateUnlocked)
 	defer func() {
 		app.state = "idle"
@@ -52,7 +54,7 @@ func (app *booksingApp) refresh() {
 	}
 
 	if len(matches) == 0 {
-		slog.Debug("no new books found")
+		slog.Info("no new books found")
 		return
 	}
 	var books []Book
