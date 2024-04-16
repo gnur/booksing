@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- deployment.yaml
+
+configMapGenerator:
+- envs:
+  - booksing.env
+  name: booksing
+
+namespace: booksing
+images:
+- name: moon.goat-gecko.ts.net/gnur/booksing
+  newTag: v17

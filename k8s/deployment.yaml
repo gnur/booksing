@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booksing
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booksing
+  template:
+    metadata:
+      labels:
+        app: booksing
+    spec:
+      containers:
+      - image: moon.goat-gecko.ts.net/gnur/booksing
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        envFrom:
+          - configMapRef:
+              name: booksing
+        name: booksing
+        ports:
+          - containerPort: 7133
+        resources:
+          limits:
+            cpu: "4"
+            memory: "2048Mi"
+          requests:
+            cpu: "1"
+            memory: "512Mi"
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/booksing

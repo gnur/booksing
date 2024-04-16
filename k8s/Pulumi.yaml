@@ -1,0 +1,7 @@
+name: booksing
+runtime: nodejs
+description: render booksing manifests for k8s
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: https://www.pulumi.com/ai/api/project/6325875b-192d-43e9-ab59-f3afb7127cd4.zip
