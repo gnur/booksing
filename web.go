@@ -142,6 +142,7 @@ func (app *booksingApp) downloadBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fName := path.Base(book.Path)
+	w.Header().Set("Content-Type", "application/epub+zip")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", fName))
 	http.ServeFile(w, r, book.Path)
