@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
-	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -179,7 +178,7 @@ func (app *booksingApp) addBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check file type, detectcontenttype only needs the first 512 bytes
+	// check file type, detectContentType only needs the first 512 bytes
 	detectedFileType := http.DetectContentType(fileBytes)
 	slog.Info("File type detected as ", "filetype", detectedFileType)
 	switch detectedFileType {
@@ -190,14 +189,6 @@ func (app *booksingApp) addBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fileName := randToken(12)
-	fileEndings, err := mime.ExtensionsByType(detectedFileType)
-	if err != nil {
-		renderError(w, "CANT_READ_FILE_TYPE", http.StatusInternalServerError)
-		return
-	}
-	if fileEndings[0] != ".zip" {
-		return
-	}
 
 	newFileName := fileName + ".epub"
 	newPath := filepath.Join(app.importDir, newFileName)
